@@ -35,7 +35,7 @@ TracingKafkaConsumer<String> kafkaConsumer = new TracingKafkaConsumer<>(consumer
 kafkaConsumer.subscribe(Collections.singletonList("messages"));
 
 // Get records
-ConsumerRecords<KafkaSpanContext, String> records = kafkaConsumer.poll(1000);
+ConsumerRecords<Integer, String> records = kafkaConsumer.poll(1000);
 
 ```
 
