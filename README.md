@@ -39,3 +39,7 @@ ConsumerRecords<KafkaSpanContext, String> records = kafkaConsumer.poll(1000);
 
 ```
 
+[ci-img]: https://travis-ci.org/opentracing-contrib/java-kafka-client.svg?branch=master
+[ci]: https://travis-ci.org/opentracing-contrib/java-kafka-client
+[maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/opentracing-kafka-client.svg?maxAge=2592000
+[maven]: http://search.maven.org/#search%7Cga%7C1%7Copentracing-kafka-client
