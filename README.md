@@ -23,13 +23,13 @@ pom.xml
 Tracer tracer = ...
 
 // Instantiate TracinKafkaProducer
-TracingKafkaProducer<String> producer = new TracingKafkaProducer<>(senderProps, tracer);
+TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps, tracer);
 
 // Send
 producer.send(...);
 
 // Instantiate TracingKafkaConsumer
-TracingKafkaConsumer<String> kafkaConsumer = new TracingKafkaConsumer<>(consumerProps, tracer);
+TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(consumerProps, tracer);
 
 //Subscribe
 kafkaConsumer.subscribe(Collections.singletonList("messages"));
