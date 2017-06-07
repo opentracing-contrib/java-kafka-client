@@ -3,6 +3,13 @@
 # OpenTracing Apache Kafka Client Instrumentation
 OpenTracing instrumentation for Apache Kafka Client
 
+## Design
+Span context is injected into Key by `TracingKafkaProducer` and extracted from Key by `TracingKafkaConsumer`.
+Therefore it is required that on both sides Producer and Consumer are tracing.
+From user perspective it is not visible that Key is modified. Logic is hidden via decorators.
+
+Custom `Partitioner` can be set via extending `TracingPartitioner` and overriding `protected Partitioner partitioner` field.  
+
 
 ## Installation
 
