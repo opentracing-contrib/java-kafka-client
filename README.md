@@ -1,5 +1,7 @@
 [![Build Status][ci-img]][ci] [![Released Version][maven-img]][maven]
 
+**WARNING: current support is "Experimental" since we are about to change it (issue [#2](/../../issues/2))**
+
 # OpenTracing Apache Kafka Client Instrumentation
 OpenTracing instrumentation for Apache Kafka Client
 
