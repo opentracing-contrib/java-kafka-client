@@ -7,9 +7,7 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -100,24 +98,10 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     ConsumerRecords<K, V> wrappedRecords = consumer.poll(timeout);
 
     for (ConsumerRecord<K, V> wrappedRecord : wrappedRecords) {
-      KafkaSpanContext kafkaSpanContext = new KafkaSpanContextDeserializer().deserialize(wrappedRecord.headers());
+      KafkaSpanContext kafkaSpanContext = TracingKafkaUtils.deserializeContext(wrappedRecord.headers());
       buildAndFinishChildSpan(kafkaSpanContext);
     }
 
-    /*Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
-
-    for (TopicPartition topicPartition : wrappedRecords.partitions()) {
-      List<ConsumerRecord<K, V>> recordsList = wrappedRecords.records(topicPartition);
-
-      List<ConsumerRecord<K, V>> list = new ArrayList<>();
-
-      list.addAll(recordsList);
-
-      records.put(topicPartition, list);
-
-    }
-
-    return new ConsumerRecords<>(records);*/
     return  wrappedRecords;
   }
 

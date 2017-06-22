@@ -1,22 +1,9 @@
 package io.opentracing.contrib.kafka;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.nio.ByteBuffer;
-import java.util.Map;
+import java.io.*;
 import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.serialization.ExtendedSerializer;
-import org.apache.kafka.common.serialization.Serializer;
-
 
 public class KafkaSpanContextSerializer {
-
-
-  public byte[] serialize() {
-    return new byte[0];
-  }
 
   public byte[] serialize(KafkaSpanContext data) {
     ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
@@ -28,4 +15,5 @@ public class KafkaSpanContextSerializer {
 
     return byteOut.toByteArray();
   }
+
 }

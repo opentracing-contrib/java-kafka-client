@@ -54,31 +54,6 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     this.producer = new KafkaProducer<>(properties, keySerializer, valueSerializer);
   }
 
-  /*private void setPartitioner(Properties properties) {
-    Object partitionerClass = properties.get(ProducerConfig.PARTITIONER_CLASS_CONFIG);
-    if (partitionerClass != null) {
-      Partitioner partitioner = TracingKafkaUtils.getInstance(partitionerClass, Partitioner.class);
-      if (partitioner instanceof TracingPartitioner) {
-        return;
-      }
-    }
-
-    properties.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, TracingPartitioner.class);
-  }
-
-  private void setPartitioner(Map<String, Object> configs) {
-    Object partitionerClass = configs.get(ProducerConfig.PARTITIONER_CLASS_CONFIG);
-    if (partitionerClass != null) {
-      Partitioner partitioner = TracingKafkaUtils.getInstance(partitionerClass, Partitioner.class);
-      if (partitioner instanceof TracingPartitioner) {
-        return;
-      }
-    }
-
-    configs.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, TracingPartitioner.class);
-  }*/
-
-
   @Override
   public void initTransactions() {
     producer.initTransactions();
@@ -117,12 +92,16 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
     wrappedRecord.headers().add("TRACING_SPAN_CONTEXT", new KafkaSpanContextSerializer().serialize(new KafkaSpanContext()));*/
 
+    ProducerRecord<K, V> wrappedRecord = new ProducerRecord<>(record.topic(),
+        record.partition(), record.timestamp(), record.key(),
+        record.value(), record.headers());
+
     Callback wrappedCallback = callback;
     if (!(callback instanceof TracingCallback)) {
-      Span span = buildAndInjectSpan(record);
+      Span span = buildAndInjectSpan(wrappedRecord);
       wrappedCallback = new TracingCallback(callback, span);
     }
-    return producer.send(record, wrappedCallback);
+    return producer.send(wrappedRecord, wrappedCallback);
   }
 
   @Override
@@ -154,7 +133,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send").ignoreActiveSpan()
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
 
-    KafkaSpanContext kafkaSpanContext = new KafkaSpanContextDeserializer().deserialize(record.headers());
+    KafkaSpanContext kafkaSpanContext = TracingKafkaUtils.deserializeContext(record.headers());
 
     SpanContext spanContext = TracingKafkaUtils.extract(kafkaSpanContext, tracer);
 
@@ -170,6 +149,11 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     SpanDecorator.onSend(record, span);
 
     TracingKafkaUtils.inject(span.context(), kafkaSpanContext, tracer);
+
+    record.headers()
+        .remove("TRACING_SPAN_CONTEXT")
+        .add("TRACING_SPAN_CONTEXT", new KafkaSpanContextSerializer().serialize(kafkaSpanContext));
+
     return span;
   }
 }

@@ -22,12 +22,6 @@ public class TracingKafkaUtilsTest {
     mockTracer.reset();
   }
 
-  /*@Test
-  public void getInstance() {
-    String string = TracingKafkaUtils.getInstance(String.class.getName(), String.class);
-    assertNotNull(string);
-  }*/
-
   @Test
   public void inject() {
     MockSpan span = mockTracer.buildSpan("test").start();

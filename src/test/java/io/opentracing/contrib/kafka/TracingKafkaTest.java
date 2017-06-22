@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Before;
@@ -65,8 +64,7 @@ public class TracingKafkaTest {
     assertNull(mockTracer.activeSpan());
   }
 
-  private void createConsumer(final CountDownLatch latch//, final Integer key
-  )
+  private void createConsumer(final CountDownLatch latch)
       throws InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
