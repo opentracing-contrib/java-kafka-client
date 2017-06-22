@@ -18,7 +18,7 @@ public class TracingPartitioner implements Partitioner {
   public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes,
       Cluster cluster) {
 
-    if (key instanceof KafkaSpanContext) {
+    /*if (key instanceof KafkaSpanContext) {
       KafkaSpanContext kafkaSpanContext = (KafkaSpanContext) key;
       int mapLength = TracingKafkaUtils.getMapLength(keyBytes);
       byte[] keyBytesWithoutMap = Arrays.copyOfRange(keyBytes, mapLength + 4, keyBytes.length);
@@ -26,7 +26,7 @@ public class TracingPartitioner implements Partitioner {
       return partitioner
           .partition(topic, kafkaSpanContext.getKey(), keyBytesWithoutMap, value, valueBytes,
               cluster);
-    }
+    }*/
 
     return partitioner.partition(topic, key, keyBytes, value, valueBytes, cluster);
   }

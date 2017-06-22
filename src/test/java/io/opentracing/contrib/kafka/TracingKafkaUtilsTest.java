@@ -31,7 +31,7 @@ public class TracingKafkaUtilsTest {
   @Test
   public void inject() {
     MockSpan span = mockTracer.buildSpan("test").start();
-    KafkaSpanContext<String> kafkaSpanContext = new KafkaSpanContext<>("key");
+    KafkaSpanContext kafkaSpanContext = new KafkaSpanContext();
     assertTrue(kafkaSpanContext.getMap().isEmpty());
 
     TracingKafkaUtils.inject(span.context(), kafkaSpanContext, mockTracer);
@@ -41,7 +41,7 @@ public class TracingKafkaUtilsTest {
   @Test
   public void extract() {
     MockSpan span = mockTracer.buildSpan("test").start();
-    KafkaSpanContext<String> kafkaSpanContext = new KafkaSpanContext<>("key");
+    KafkaSpanContext kafkaSpanContext = new KafkaSpanContext();
     TracingKafkaUtils.inject(span.context(), kafkaSpanContext, mockTracer);
 
     MockSpan.MockContext spanContext = (MockSpan.MockContext) TracingKafkaUtils

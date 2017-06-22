@@ -24,15 +24,14 @@ public class TracingPartitionerTest {
     partition(null);
   }
 
-  public void partition(String key) {
+  private void partition(String key) {
     TracingPartitioner partitioner = new TracingPartitioner();
     StringSerializer stringSerializer = new StringSerializer();
-    KafkaSpanContextSerializer<String> serializer = new KafkaSpanContextSerializer<>(
-        stringSerializer);
-    KafkaSpanContext<String> context = new KafkaSpanContext<>(key);
+    KafkaSpanContextSerializer serializer = new KafkaSpanContextSerializer();
+    KafkaSpanContext context = new KafkaSpanContext();
     context.getMap().put("one", "two");
 
-    byte[] serialized = serializer.serialize("topic", context);
+    byte[] serialized = serializer.serialize(context);
 
     Map<TopicPartition, PartitionInfo> partitions = new HashMap<>();
     partitions.put(new TopicPartition("topic", 1), new PartitionInfo("topic", 1, null, null, null));

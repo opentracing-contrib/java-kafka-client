@@ -41,8 +41,7 @@ public class TracingKafkaTest {
   @Test
   public void test() throws Exception {
     Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps,
-        mockTracer);
+    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps, mockTracer);
 
     ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", 1, "test");
     // Send 1
@@ -68,27 +67,6 @@ public class TracingKafkaTest {
     assertNull(mockTracer.activeSpan());
   }
 
-
-  @Test
-  public void nullKey() throws Exception {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    senderProps.remove(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps,
-        mockTracer);
-
-    ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", "test");
-    producer.send(record);
-
-    final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka);
-    consumerProps.put("auto.offset.reset", "earliest");
-
-    final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, null);
-
-    producer.close();
-  }
-
   private void createConsumer(final CountDownLatch latch, final Integer key)
       throws InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -100,8 +78,7 @@ public class TracingKafkaTest {
     executorService.execute(new Runnable() {
       @Override
       public void run() {
-        TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(
-            consumerProps, mockTracer);
+        TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(consumerProps, mockTracer);
 
         kafkaConsumer.subscribe(Collections.singletonList("messages"));
 

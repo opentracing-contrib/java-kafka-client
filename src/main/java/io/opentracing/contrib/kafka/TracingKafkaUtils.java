@@ -19,9 +19,8 @@ public class TracingKafkaUtils {
    * @param kafkaSpanContext KafkaSpanContext
    * @return span context
    */
-  public static <K> SpanContext extract(KafkaSpanContext<K> kafkaSpanContext, Tracer tracer) {
-    return tracer
-        .extract(Format.Builtin.TEXT_MAP, new TextMapExtractAdapter(kafkaSpanContext.getMap()));
+  public static SpanContext extract(KafkaSpanContext kafkaSpanContext, Tracer tracer) {
+    return tracer.extract(Format.Builtin.TEXT_MAP, new TextMapExtractAdapter(kafkaSpanContext.getMap()));
   }
 
   /**
@@ -30,7 +29,7 @@ public class TracingKafkaUtils {
    * @param spanContext Span Context
    * @param kafkaSpanContext KafkaSpanContext
    */
-  public static <K> void inject(SpanContext spanContext, KafkaSpanContext<K> kafkaSpanContext,
+  public static <K> void inject(SpanContext spanContext, KafkaSpanContext kafkaSpanContext,
       Tracer tracer) {
     tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
         new TextMapInjectAdapter(kafkaSpanContext.getMap()));

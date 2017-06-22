@@ -34,43 +34,31 @@ import org.apache.kafka.common.serialization.Deserializer;
 public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   private final Tracer tracer;
-  private final KafkaConsumer<KafkaSpanContext<K>, V> consumer;
+  private final KafkaConsumer<K, V> consumer;
 
 
   @SuppressWarnings("unchecked")
   public TracingKafkaConsumer(Map<String, Object> configs, Tracer tracer) {
     this.tracer = tracer;
-    Object keyDeserializerValue = configs.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
-    Deserializer<K> keyDeserializer = TracingKafkaUtils
-        .getInstance(keyDeserializerValue, Deserializer.class);
-
-    this.consumer = new KafkaConsumer<>(configs,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), null);
+    this.consumer = new KafkaConsumer<>(configs);
   }
 
   public TracingKafkaConsumer(Map<String, Object> configs, Deserializer<K> keyDeserializer,
       Deserializer<V> valueDeserializer, Tracer tracer) {
     this.tracer = tracer;
-    this.consumer = new KafkaConsumer<>(configs,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), valueDeserializer);
+    this.consumer = new KafkaConsumer<>(configs, keyDeserializer, valueDeserializer);
   }
 
   @SuppressWarnings("unchecked")
   public TracingKafkaConsumer(Properties properties, Tracer tracer) {
     this.tracer = tracer;
-    Object keyDeserializerValue = properties.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
-    Deserializer<K> keyDeserializer = TracingKafkaUtils
-        .getInstance(keyDeserializerValue, Deserializer.class);
-
-    this.consumer = new KafkaConsumer<>(properties,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), null);
+    this.consumer = new KafkaConsumer<>(properties);
   }
 
   public TracingKafkaConsumer(Properties properties, Deserializer<K> keyDeserializer,
       Deserializer<V> valueDeserializer, Tracer tracer) {
     this.tracer = tracer;
-    this.consumer = new KafkaConsumer<>(properties,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), valueDeserializer);
+    this.consumer = new KafkaConsumer<>(properties, keyDeserializer, valueDeserializer);
   }
 
   @Override
@@ -110,26 +98,27 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public ConsumerRecords<K, V> poll(long timeout) {
-    ConsumerRecords<KafkaSpanContext<K>, V> wrappedRecords = consumer.poll(timeout);
+    ConsumerRecords<K, V> wrappedRecords = consumer.poll(timeout);
 
-    for (ConsumerRecord<KafkaSpanContext<K>, V> wrappedRecord : wrappedRecords) {
-      buildAndFinishChildSpan(wrappedRecord.key());
+    for (ConsumerRecord<K, V> wrappedRecord : wrappedRecords) {
+      KafkaSpanContext kafkaSpanContext = new KafkaSpanContextDeserializer().deserialize(wrappedRecord.headers());
+      buildAndFinishChildSpan(kafkaSpanContext);
     }
 
     Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
 
     for (TopicPartition topicPartition : wrappedRecords.partitions()) {
-      List<ConsumerRecord<KafkaSpanContext<K>, V>> recordsList = wrappedRecords
+      List<ConsumerRecord<K, V>> recordsList = wrappedRecords
           .records(topicPartition);
 
       List<ConsumerRecord<K, V>> list = new ArrayList<>();
 
-      for (ConsumerRecord<KafkaSpanContext<K>, V> record : recordsList) {
+      for (ConsumerRecord<K, V> record : recordsList) {
         ConsumerRecord<K, V> consumerRecord = new ConsumerRecord<>(record.topic(),
             record.partition(),
             record.offset(), record.timestamp(), record.timestampType(), record.checksum(),
-            record.serializedKeySize(), record.serializedValueSize(), record.key().getKey(),
-            record.value());
+            record.serializedKeySize(), record.serializedValueSize(), record.key(),
+            record.value(), record.headers());
         list.add(consumerRecord);
       }
 

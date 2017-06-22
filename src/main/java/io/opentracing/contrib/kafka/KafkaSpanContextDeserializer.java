@@ -4,47 +4,57 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.ExtendedDeserializer;
 
-public class KafkaSpanContextDeserializer<K> implements Deserializer<KafkaSpanContext<K>> {
+public class KafkaSpanContextDeserializer {
 
-  private final Deserializer<K> keyDeserializer;
-
-  public KafkaSpanContextDeserializer(Deserializer<K> keyDeserializer) {
-    this.keyDeserializer = keyDeserializer;
-  }
-
-  @Override
-  public void configure(Map<String, ?> configs, boolean isKey) {
-  }
-
-  @Override
   @SuppressWarnings("unchecked")
-  public KafkaSpanContext<K> deserialize(String topic, byte[] data) {
-    int mapLength = TracingKafkaUtils.getMapLength(data);
-    byte[] serializedMap = Arrays.copyOfRange(data, 4, mapLength + 4);
-    byte[] serializedKey = Arrays.copyOfRange(data, mapLength + 4, data.length);
-
-    K key = null;
-    if (serializedKey.length > 0) {
-      key = keyDeserializer.deserialize(topic, serializedKey);
-    }
-
-    KafkaSpanContext<K> kafkaSpanContext = new KafkaSpanContext<>(key);
-    ByteArrayInputStream byteIn = new ByteArrayInputStream(serializedMap);
-    try (ObjectInputStream in = new ObjectInputStream(byteIn)) {
-      Map<String, String> map = (Map<String, String>) in.readObject();
-      kafkaSpanContext.getMap().putAll(map);
-    } catch (IOException | ClassNotFoundException e) {
-      throw new KafkaException(e);
-    }
-
-    return kafkaSpanContext;
+  public KafkaSpanContext deserialize() {
+    return new KafkaSpanContext();
   }
 
-  @Override
-  public void close() {
+  @SuppressWarnings("unchecked")
+  public KafkaSpanContext deserialize(Headers headers) {
+    Iterator<Header> iterator = headers.headers("TRACING_SPAN_CONTEXT").iterator();
+    if(iterator.hasNext()){
+      Header spanContextHeader = iterator.next();
+      byte[] spanContextData = spanContextHeader.value();
+
+      /*int mapLength = TracingKafkaUtils.getMapLength(spanContextData);
+      byte[] serializedMap = Arrays.copyOfRange(spanContextData, 4, mapLength + 4);*/
+
+      KafkaSpanContext kafkaSpanContext = new KafkaSpanContext();
+      ByteArrayInputStream byteIn = new ByteArrayInputStream(spanContextData);
+      try (ObjectInputStream in = new ObjectInputStream(byteIn)) {
+        Map<String, String> map = (Map<String, String>) in.readObject();
+        kafkaSpanContext.getMap().putAll(map);
+      } catch (IOException | ClassNotFoundException e) {
+        throw new KafkaException(e);
+      }
+
+      return kafkaSpanContext;
+    } else {
+      return new KafkaSpanContext();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public KafkaSpanContext deserialize(byte[] serializedMap) {
+      KafkaSpanContext kafkaSpanContext = new KafkaSpanContext();
+      ByteArrayInputStream byteIn = new ByteArrayInputStream(serializedMap);
+      try (ObjectInputStream in = new ObjectInputStream(byteIn)) {
+        Map<String, String> map = (Map<String, String>) in.readObject();
+        kafkaSpanContext.getMap().putAll(map);
+      } catch (IOException | ClassNotFoundException e) {
+        throw new KafkaException(e);
+      }
+
+      return kafkaSpanContext;
   }
 }

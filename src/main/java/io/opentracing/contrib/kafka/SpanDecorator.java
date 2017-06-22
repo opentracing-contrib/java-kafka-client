@@ -16,7 +16,7 @@ public class SpanDecorator {
   /**
    * Called before record is sent by producer
    */
-  public static <K, V> void onSend(ProducerRecord<KafkaSpanContext<K>, V> record, Span span) {
+  public static <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
     Tags.COMPONENT.set(span, COMPONENT_NAME);
     Tags.MESSAGE_BUS_DESTINATION.set(span, record.topic());
   }
