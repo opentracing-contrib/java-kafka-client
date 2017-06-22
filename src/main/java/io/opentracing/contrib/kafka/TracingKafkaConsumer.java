@@ -17,7 +17,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -105,28 +104,21 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
       buildAndFinishChildSpan(kafkaSpanContext);
     }
 
-    Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
+    /*Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
 
     for (TopicPartition topicPartition : wrappedRecords.partitions()) {
-      List<ConsumerRecord<K, V>> recordsList = wrappedRecords
-          .records(topicPartition);
+      List<ConsumerRecord<K, V>> recordsList = wrappedRecords.records(topicPartition);
 
       List<ConsumerRecord<K, V>> list = new ArrayList<>();
 
-      for (ConsumerRecord<K, V> record : recordsList) {
-        ConsumerRecord<K, V> consumerRecord = new ConsumerRecord<>(record.topic(),
-            record.partition(),
-            record.offset(), record.timestamp(), record.timestampType(), record.checksum(),
-            record.serializedKeySize(), record.serializedValueSize(), record.key(),
-            record.value(), record.headers());
-        list.add(consumerRecord);
-      }
+      list.addAll(recordsList);
 
       records.put(topicPartition, list);
 
     }
 
-    return new ConsumerRecords<>(records);
+    return new ConsumerRecords<>(records);*/
+    return  wrappedRecords;
   }
 
   @Override
@@ -245,7 +237,6 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     SpanContext parentContext = extract(kafkaSpanContext);
 
     if (parentContext != null) {
-
       Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive").ignoreActiveSpan()
           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
 

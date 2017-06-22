@@ -22,11 +22,11 @@ public class TracingKafkaUtilsTest {
     mockTracer.reset();
   }
 
-  @Test
+  /*@Test
   public void getInstance() {
     String string = TracingKafkaUtils.getInstance(String.class.getName(), String.class);
     assertNotNull(string);
-  }
+  }*/
 
   @Test
   public void inject() {

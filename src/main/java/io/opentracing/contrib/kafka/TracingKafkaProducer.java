@@ -15,9 +15,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Partitioner;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
@@ -56,7 +54,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     this.producer = new KafkaProducer<>(properties, keySerializer, valueSerializer);
   }
 
-  private void setPartitioner(Properties properties) {
+  /*private void setPartitioner(Properties properties) {
     Object partitionerClass = properties.get(ProducerConfig.PARTITIONER_CLASS_CONFIG);
     if (partitionerClass != null) {
       Partitioner partitioner = TracingKafkaUtils.getInstance(partitionerClass, Partitioner.class);
@@ -78,7 +76,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     }
 
     configs.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, TracingPartitioner.class);
-  }
+  }*/
 
 
   @Override

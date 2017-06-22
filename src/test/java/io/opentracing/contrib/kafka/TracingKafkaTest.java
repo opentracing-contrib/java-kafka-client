@@ -57,9 +57,7 @@ public class TracingKafkaTest {
 
     final CountDownLatch latch = new CountDownLatch(2);
 
-    createConsumer(latch, 1);
-
-    producer.close();
+    createConsumer(latch);
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(4, mockSpans.size());
@@ -67,7 +65,8 @@ public class TracingKafkaTest {
     assertNull(mockTracer.activeSpan());
   }
 
-  private void createConsumer(final CountDownLatch latch, final Integer key)
+  private void createConsumer(final CountDownLatch latch//, final Integer key
+  )
       throws InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -86,9 +85,7 @@ public class TracingKafkaTest {
           ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
           for (ConsumerRecord<Integer, String> record : records) {
             assertEquals("test", record.value());
-            if (key != null) {
-              assertEquals(key, record.key());
-            }
+            assertEquals(Integer.valueOf(1), record.key());
             kafkaConsumer.commitSync();
             latch.countDown();
           }
@@ -97,7 +94,7 @@ public class TracingKafkaTest {
       }
     });
 
-    assertTrue(latch.await(30, TimeUnit.SECONDS));
+    assertTrue(latch.await(60, TimeUnit.SECONDS));
 
   }
 
@@ -107,8 +104,7 @@ public class TracingKafkaTest {
       assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
       String operationName = mockSpan.operationName();
-      assertTrue(operationName.equals("send")
-          || operationName.equals("receive"));
+      assertTrue(operationName.equals("send") || operationName.equals("receive"));
     }
   }
 

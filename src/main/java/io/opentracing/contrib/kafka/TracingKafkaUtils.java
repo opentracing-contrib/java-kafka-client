@@ -29,13 +29,11 @@ public class TracingKafkaUtils {
    * @param spanContext Span Context
    * @param kafkaSpanContext KafkaSpanContext
    */
-  public static <K> void inject(SpanContext spanContext, KafkaSpanContext kafkaSpanContext,
-      Tracer tracer) {
-    tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
-        new TextMapInjectAdapter(kafkaSpanContext.getMap()));
+  public static void inject(SpanContext spanContext, KafkaSpanContext kafkaSpanContext, Tracer tracer) {
+    tracer.inject(spanContext, Format.Builtin.TEXT_MAP, new TextMapInjectAdapter(kafkaSpanContext.getMap()));
   }
 
-  public static <T> T getInstance(Object value, Class<T> t) {
+  /*public static <T> T getInstance(Object value, Class<T> t) {
     String trimmed = null;
     Class<?> c = null;
     if (value instanceof String) {
@@ -63,7 +61,7 @@ public class TracingKafkaUtils {
     }
 
     return t.cast(o);
-  }
+  }*/
 
   static int getMapLength(byte[] data) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, 4));
