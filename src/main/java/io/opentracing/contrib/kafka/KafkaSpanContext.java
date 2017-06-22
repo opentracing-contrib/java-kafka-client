@@ -4,17 +4,11 @@ package io.opentracing.contrib.kafka;
 import java.util.HashMap;
 import java.util.Map;
 
-public class KafkaSpanContext<K> {
+public class KafkaSpanContext {
 
   private final Map<String, String> map = new HashMap<>();
-  private K key;
 
-  public KafkaSpanContext(K key) {
-    this.key = key;
-  }
-
-  public K getKey() {
-    return key;
+  public KafkaSpanContext() {
   }
 
   public Map<String, String> getMap() {

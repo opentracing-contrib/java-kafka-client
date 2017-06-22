@@ -5,94 +5,79 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Partitioner;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.serialization.Serializer;
 
 public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
-  private KafkaProducer<KafkaSpanContext<K>, V> producer;
+  private KafkaProducer<K, V> producer;
   private final Tracer tracer;
 
   @SuppressWarnings("unchecked")
   public TracingKafkaProducer(Map<String, Object> configs, Tracer tracer) {
     this.tracer = tracer;
-    Object keySerializerValue = configs.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-    Serializer<K> keySerializer = TracingKafkaUtils
-        .getInstance(keySerializerValue, Serializer.class);
-
-    setPartitioner(configs);
-
-    this.producer = new KafkaProducer<>(configs, new KafkaSpanContextSerializer<>(keySerializer),
-        null);
+    this.producer = new KafkaProducer<>(configs);
   }
 
   public TracingKafkaProducer(Map<String, Object> configs, Serializer<K> keySerializer,
       Serializer<V> valueSerializer, Tracer tracer) {
     this.tracer = tracer;
-    setPartitioner(configs);
-    this.producer = new KafkaProducer<>(configs, new KafkaSpanContextSerializer<>(keySerializer),
-        valueSerializer);
+    this.producer = new KafkaProducer<>(configs, keySerializer, valueSerializer);
   }
 
   @SuppressWarnings("unchecked")
   public TracingKafkaProducer(Properties properties, Tracer tracer) {
     this.tracer = tracer;
-    Object keySerializerValue = properties.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-    Serializer<K> keySerializer = TracingKafkaUtils
-        .getInstance(keySerializerValue, Serializer.class);
-
-    setPartitioner(properties);
-
-    this.producer = new KafkaProducer<>(properties, new KafkaSpanContextSerializer<>(keySerializer),
-        null);
+    this.producer = new KafkaProducer<>(properties);
   }
 
   public TracingKafkaProducer(Properties properties, Serializer<K> keySerializer,
       Serializer<V> valueSerializer, Tracer tracer) {
     this.tracer = tracer;
-    setPartitioner(properties);
-    this.producer = new KafkaProducer<>(properties, new KafkaSpanContextSerializer<>(keySerializer),
-        valueSerializer);
+    this.producer = new KafkaProducer<>(properties, keySerializer, valueSerializer);
   }
 
-  private void setPartitioner(Properties properties) {
-    Object partitionerClass = properties.get(ProducerConfig.PARTITIONER_CLASS_CONFIG);
-    if (partitionerClass != null) {
-      Partitioner partitioner = TracingKafkaUtils.getInstance(partitionerClass, Partitioner.class);
-      if (partitioner instanceof TracingPartitioner) {
-        return;
-      }
-    }
-
-    properties.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, TracingPartitioner.class);
+  @Override
+  public void initTransactions() {
+    producer.initTransactions();
   }
 
-  private void setPartitioner(Map<String, Object> configs) {
-    Object partitionerClass = configs.get(ProducerConfig.PARTITIONER_CLASS_CONFIG);
-    if (partitionerClass != null) {
-      Partitioner partitioner = TracingKafkaUtils.getInstance(partitionerClass, Partitioner.class);
-      if (partitioner instanceof TracingPartitioner) {
-        return;
-      }
-    }
-
-    configs.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, TracingPartitioner.class);
+  @Override
+  public void beginTransaction() throws ProducerFencedException {
+    producer.beginTransaction();
   }
 
+  @Override
+  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> map, String s) throws ProducerFencedException {
+    producer.sendOffsetsToTransaction(map, s);
+  }
+
+  @Override
+  public void commitTransaction() throws ProducerFencedException {
+    producer.commitTransaction();
+  }
+
+  @Override
+  public void abortTransaction() throws ProducerFencedException {
+    producer.abortTransaction();
+  }
 
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
@@ -101,9 +86,15 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
-    ProducerRecord<KafkaSpanContext<K>, V> wrappedRecord = new ProducerRecord<>(record.topic(),
-        record.partition(), record.timestamp(), new KafkaSpanContext<>(record.key()),
-        record.value());
+    /*ProducerRecord<K, V> wrappedRecord = new ProducerRecord<>(record.topic(),
+        record.partition(), record.timestamp(), record.key(),
+        record.value(), record.headers());
+
+    wrappedRecord.headers().add("TRACING_SPAN_CONTEXT", new KafkaSpanContextSerializer().serialize(new KafkaSpanContext()));*/
+
+    ProducerRecord<K, V> wrappedRecord = new ProducerRecord<>(record.topic(),
+        record.partition(), record.timestamp(), record.key(),
+        record.value(), record.headers());
 
     Callback wrappedCallback = callback;
     if (!(callback instanceof TracingCallback)) {
@@ -138,11 +129,13 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     producer.close(timeout, timeUnit);
   }
 
-  private Span buildAndInjectSpan(ProducerRecord<KafkaSpanContext<K>, V> record) {
+  private Span buildAndInjectSpan(ProducerRecord<K, V> record) {
     Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send").ignoreActiveSpan()
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
 
-    SpanContext spanContext = TracingKafkaUtils.extract(record.key(), tracer);
+    KafkaSpanContext kafkaSpanContext = TracingKafkaUtils.deserializeContext(record.headers());
+
+    SpanContext spanContext = TracingKafkaUtils.extract(kafkaSpanContext, tracer);
 
     if (spanContext == null && tracer.activeSpan() != null) {
       spanContext = tracer.activeSpan().context();
@@ -155,7 +148,12 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     Span span = spanBuilder.startManual();
     SpanDecorator.onSend(record, span);
 
-    TracingKafkaUtils.inject(span.context(), record.key(), tracer);
+    TracingKafkaUtils.inject(span.context(), kafkaSpanContext, tracer);
+
+    record.headers()
+        .remove("TRACING_SPAN_CONTEXT")
+        .add("TRACING_SPAN_CONTEXT", new KafkaSpanContextSerializer().serialize(kafkaSpanContext));
+
     return span;
   }
 }

@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Before;
@@ -41,8 +40,7 @@ public class TracingKafkaTest {
   @Test
   public void test() throws Exception {
     Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps,
-        mockTracer);
+    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps, mockTracer);
 
     ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", 1, "test");
     // Send 1
@@ -58,9 +56,7 @@ public class TracingKafkaTest {
 
     final CountDownLatch latch = new CountDownLatch(2);
 
-    createConsumer(latch, 1);
-
-    producer.close();
+    createConsumer(latch);
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(4, mockSpans.size());
@@ -68,28 +64,7 @@ public class TracingKafkaTest {
     assertNull(mockTracer.activeSpan());
   }
 
-
-  @Test
-  public void nullKey() throws Exception {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    senderProps.remove(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps,
-        mockTracer);
-
-    ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", "test");
-    producer.send(record);
-
-    final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka);
-    consumerProps.put("auto.offset.reset", "earliest");
-
-    final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, null);
-
-    producer.close();
-  }
-
-  private void createConsumer(final CountDownLatch latch, final Integer key)
+  private void createConsumer(final CountDownLatch latch)
       throws InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -100,8 +75,7 @@ public class TracingKafkaTest {
     executorService.execute(new Runnable() {
       @Override
       public void run() {
-        TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(
-            consumerProps, mockTracer);
+        TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(consumerProps, mockTracer);
 
         kafkaConsumer.subscribe(Collections.singletonList("messages"));
 
@@ -109,9 +83,7 @@ public class TracingKafkaTest {
           ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
           for (ConsumerRecord<Integer, String> record : records) {
             assertEquals("test", record.value());
-            if (key != null) {
-              assertEquals(key, record.key());
-            }
+            assertEquals(Integer.valueOf(1), record.key());
             kafkaConsumer.commitSync();
             latch.countDown();
           }
@@ -120,7 +92,7 @@ public class TracingKafkaTest {
       }
     });
 
-    assertTrue(latch.await(30, TimeUnit.SECONDS));
+    assertTrue(latch.await(60, TimeUnit.SECONDS));
 
   }
 
@@ -130,8 +102,7 @@ public class TracingKafkaTest {
       assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
       String operationName = mockSpan.operationName();
-      assertTrue(operationName.equals("send")
-          || operationName.equals("receive"));
+      assertTrue(operationName.equals("send") || operationName.equals("receive"));
     }
   }
 
