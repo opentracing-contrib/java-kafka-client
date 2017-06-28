@@ -1,7 +1,8 @@
 package io.opentracing.contrib.kafka;
 
 
-import io.opentracing.Span;
+import io.opentracing.ActiveSpan;
+import io.opentracing.ActiveSpan.Continuation;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
@@ -11,17 +12,19 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 public class TracingCallback implements Callback {
 
   private final Callback callback;
-  private final Span span;
+  private final Continuation continuation;
 
-  public TracingCallback(Callback callback, Span span) {
+  TracingCallback(Callback callback, Continuation continuation) {
     this.callback = callback;
-    this.span = span;
+    this.continuation = continuation;
   }
 
   @Override
   public void onCompletion(RecordMetadata metadata, Exception exception) {
+    ActiveSpan activeSpan = continuation.activate();
+
     if (exception != null) {
-      SpanDecorator.onError(exception, span);
+      SpanDecorator.onError(exception, activeSpan);
     }
 
     try {
@@ -29,7 +32,7 @@ public class TracingCallback implements Callback {
         callback.onCompletion(metadata, exception);
       }
     } finally {
-      span.finish();
+      activeSpan.deactivate();
     }
   }
 }
