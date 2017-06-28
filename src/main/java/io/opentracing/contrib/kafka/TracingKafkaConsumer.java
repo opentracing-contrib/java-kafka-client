@@ -1,23 +1,18 @@
 package io.opentracing.contrib.kafka;
 
 
-import io.opentracing.ActiveSpan;
 import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -29,48 +24,16 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.Deserializer;
 
 public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   private final Tracer tracer;
-  private final KafkaConsumer<KafkaSpanContext<K>, V> consumer;
+  private final KafkaConsumer<K, V> consumer;
 
 
-  @SuppressWarnings("unchecked")
-  public TracingKafkaConsumer(Map<String, Object> configs, Tracer tracer) {
+  public TracingKafkaConsumer(KafkaConsumer<K, V> consumer, Tracer tracer) {
+    this.consumer = consumer;
     this.tracer = tracer;
-    Object keyDeserializerValue = configs.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
-    Deserializer<K> keyDeserializer = TracingKafkaUtils
-        .getInstance(keyDeserializerValue, Deserializer.class);
-
-    this.consumer = new KafkaConsumer<>(configs,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), null);
-  }
-
-  public TracingKafkaConsumer(Map<String, Object> configs, Deserializer<K> keyDeserializer,
-      Deserializer<V> valueDeserializer, Tracer tracer) {
-    this.tracer = tracer;
-    this.consumer = new KafkaConsumer<>(configs,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), valueDeserializer);
-  }
-
-  @SuppressWarnings("unchecked")
-  public TracingKafkaConsumer(Properties properties, Tracer tracer) {
-    this.tracer = tracer;
-    Object keyDeserializerValue = properties.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
-    Deserializer<K> keyDeserializer = TracingKafkaUtils
-        .getInstance(keyDeserializerValue, Deserializer.class);
-
-    this.consumer = new KafkaConsumer<>(properties,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), null);
-  }
-
-  public TracingKafkaConsumer(Properties properties, Deserializer<K> keyDeserializer,
-      Deserializer<V> valueDeserializer, Tracer tracer) {
-    this.tracer = tracer;
-    this.consumer = new KafkaConsumer<>(properties,
-        new KafkaSpanContextDeserializer<>(keyDeserializer), valueDeserializer);
   }
 
   @Override
@@ -110,34 +73,13 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public ConsumerRecords<K, V> poll(long timeout) {
-    ConsumerRecords<KafkaSpanContext<K>, V> wrappedRecords = consumer.poll(timeout);
+    ConsumerRecords<K, V> records = consumer.poll(timeout);
 
-    for (ConsumerRecord<KafkaSpanContext<K>, V> wrappedRecord : wrappedRecords) {
-      buildAndFinishChildSpan(wrappedRecord.key());
+    for (ConsumerRecord<K, V> record : records) {
+      buildAndFinishChildSpan(record);
     }
 
-    Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
-
-    for (TopicPartition topicPartition : wrappedRecords.partitions()) {
-      List<ConsumerRecord<KafkaSpanContext<K>, V>> recordsList = wrappedRecords
-          .records(topicPartition);
-
-      List<ConsumerRecord<K, V>> list = new ArrayList<>();
-
-      for (ConsumerRecord<KafkaSpanContext<K>, V> record : recordsList) {
-        ConsumerRecord<K, V> consumerRecord = new ConsumerRecord<>(record.topic(),
-            record.partition(),
-            record.offset(), record.timestamp(), record.timestampType(), record.checksum(),
-            record.serializedKeySize(), record.serializedValueSize(), record.key().getKey(),
-            record.value());
-        list.add(consumerRecord);
-      }
-
-      records.put(topicPartition, list);
-
-    }
-
-    return new ConsumerRecords<>(records);
+    return records;
   }
 
   @Override
@@ -252,32 +194,19 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     consumer.wakeup();
   }
 
-  private void buildAndFinishChildSpan(KafkaSpanContext kafkaSpanContext) {
-    SpanContext parentContext = extract(kafkaSpanContext);
+  private void buildAndFinishChildSpan(ConsumerRecord<K, V> record) {
+    SpanContext parentContext = TracingKafkaUtils.extract(record.headers(), tracer);
 
     if (parentContext != null) {
 
-      Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive").ignoreActiveSpan()
+      Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive")
           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
 
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
 
       Span span = spanBuilder.startManual();
-      SpanDecorator.onResponse(span);
+      SpanDecorator.onResponse(record, span);
       span.finish();
     }
-  }
-
-  private SpanContext extract(KafkaSpanContext kafkaSpanContext) {
-    SpanContext spanContext = TracingKafkaUtils.extract(kafkaSpanContext, tracer);
-    if (spanContext != null) {
-      return spanContext;
-    }
-
-    ActiveSpan span = tracer.activeSpan();
-    if (span != null) {
-      return span.context();
-    }
-    return null;
   }
 }

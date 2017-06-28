@@ -1,17 +1,8 @@
 [![Build Status][ci-img]][ci] [![Released Version][maven-img]][maven]
 
-**WARNING: current support is "Experimental" since we are about to change it (issue [#2](/../../issues/2))**
 
 # OpenTracing Apache Kafka Client Instrumentation
 OpenTracing instrumentation for Apache Kafka Client
-
-## Design
-Span context is injected into Key by `TracingKafkaProducer` and extracted from Key by `TracingKafkaConsumer`.
-Therefore it is required that on both sides Producer and Consumer are tracing.
-From user perspective it is not visible that Key is modified. Logic is hidden via decorators.
-
-Custom `Partitioner` can be set via extending `TracingPartitioner` and overriding `protected Partitioner partitioner` field.  
-
 
 ## Installation
 
@@ -20,7 +11,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-client</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
 </dependency>
 ```
 
@@ -31,20 +22,24 @@ pom.xml
 // Instantiate tracer
 Tracer tracer = ...
 
-// Instantiate TracinKafkaProducer
-TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps, tracer);
+// Instantiate KafkaProducer
+KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+//Decorate KafkaProducer with TracingKafkaProducer
+TracingKafkaProducer<Integer, String> tracingKafkaProducer = new TracingKafkaProducer<>(kafkaProducer, tracer);
 
 // Send
-producer.send(...);
+tracingKafkaProducer.send(...);
 
-// Instantiate TracingKafkaConsumer
-TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(consumerProps, tracer);
+// Instantiate KafkaConsumer
+KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+// Decorate KafkaConsumer with TracingKafkaConsumer
+TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(kafkaConsumer, tracer);
 
 //Subscribe
-kafkaConsumer.subscribe(Collections.singletonList("messages"));
+tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
 
 // Get records
-ConsumerRecords<Integer, String> records = kafkaConsumer.poll(1000);
+ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(1000);
 
 ```
 

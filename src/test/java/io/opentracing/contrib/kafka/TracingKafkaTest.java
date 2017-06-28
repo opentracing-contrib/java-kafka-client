@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
+import io.opentracing.util.ThreadLocalActiveSpanSource;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -17,8 +18,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Before;
@@ -31,7 +33,8 @@ public class TracingKafkaTest {
 
   @ClassRule
   public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(2, true, 2, "messages");
-  private MockTracer mockTracer = new MockTracer(MockTracer.Propagator.TEXT_MAP);
+  private MockTracer mockTracer = new MockTracer(new ThreadLocalActiveSpanSource(),
+      MockTracer.Propagator.TEXT_MAP);
 
   @Before
   public void before() throws Exception {
@@ -41,15 +44,15 @@ public class TracingKafkaTest {
   @Test
   public void test() throws Exception {
     Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps,
+    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(kafkaProducer,
         mockTracer);
 
-    ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", 1, "test");
     // Send 1
-    producer.send(record);
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
 
     // Send 2
-    producer.send(record, new Callback() {
+    producer.send(new ProducerRecord<>("messages", 1, "test"), new Callback() {
       @Override
       public void onCompletion(RecordMetadata metadata, Exception exception) {
         assertEquals("messages", metadata.topic());
@@ -72,8 +75,8 @@ public class TracingKafkaTest {
   @Test
   public void nullKey() throws Exception {
     Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    senderProps.remove(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(senderProps,
+    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(kafkaProducer,
         mockTracer);
 
     ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", "test");
@@ -100,19 +103,20 @@ public class TracingKafkaTest {
     executorService.execute(new Runnable() {
       @Override
       public void run() {
-        TracingKafkaConsumer<Integer, String> kafkaConsumer = new TracingKafkaConsumer<>(
-            consumerProps, mockTracer);
+        KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+        TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(
+            kafkaConsumer, mockTracer);
 
-        kafkaConsumer.subscribe(Collections.singletonList("messages"));
+        tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
 
         while (latch.getCount() > 0) {
-          ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
+          ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(100);
           for (ConsumerRecord<Integer, String> record : records) {
             assertEquals("test", record.value());
             if (key != null) {
               assertEquals(key, record.key());
             }
-            kafkaConsumer.commitSync();
+            tracingKafkaConsumer.commitSync();
             latch.countDown();
           }
         }
