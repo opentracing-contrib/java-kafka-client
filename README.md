@@ -4,6 +4,11 @@
 # OpenTracing Apache Kafka Client Instrumentation
 OpenTracing instrumentation for Apache Kafka Client
 
+## Requirements
+
+- Java 8
+- Scala 2.12
+
 ## Installation
 
 pom.xml
