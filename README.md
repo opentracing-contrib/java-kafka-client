@@ -8,6 +8,7 @@ OpenTracing instrumentation for Apache Kafka Client
 
 - Java 8
 - Scala 2.12
+- Kafka_2.12 0.11.0.0
 
 ## Installation
 
