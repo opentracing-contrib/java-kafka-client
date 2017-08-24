@@ -2,13 +2,16 @@ package io.opentracing.contrib.kafka;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import io.opentracing.ActiveSpan;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.ThreadLocalActiveSpanSource;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +24,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Before;
@@ -43,10 +47,7 @@ public class TracingKafkaTest {
 
   @Test
   public void test() throws Exception {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(kafkaProducer,
-        mockTracer);
+    Producer<Integer, String> producer = createProducer();
 
     // Send 1
     producer.send(new ProducerRecord<>("messages", 1, "test"));
@@ -60,7 +61,6 @@ public class TracingKafkaTest {
     });
 
     final CountDownLatch latch = new CountDownLatch(2);
-
     createConsumer(latch, 1);
 
     producer.close();
@@ -71,13 +71,44 @@ public class TracingKafkaTest {
     assertNull(mockTracer.activeSpan());
   }
 
+  @Test
+  public void with_parent() throws Exception {
+    Producer<Integer, String> producer = createProducer();
+
+    try (ActiveSpan activeSpan = mockTracer.buildSpan("parent").startActive()) {
+      producer.send(new ProducerRecord<>("messages", 1, "test"));
+    }
+
+    final CountDownLatch latch = new CountDownLatch(1);
+    createConsumer(latch, 1);
+
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(3, mockSpans.size());
+
+    MockSpan parent = getByOperationName(mockSpans, "parent");
+    assertNotNull(parent);
+
+    for (MockSpan span : mockSpans) {
+      assertEquals(parent.context().traceId(), span.context().traceId());
+    }
+
+    MockSpan sendSpan = getByOperationName(mockSpans, "send");
+    assertNotNull(sendSpan);
+
+    MockSpan receiveSpan = getByOperationName(mockSpans, "receive");
+    assertNotNull(receiveSpan);
+
+    assertEquals(sendSpan.context().spanId(), receiveSpan.parentId());
+    assertEquals(parent.context().spanId(), sendSpan.parentId());
+
+    assertNull(mockTracer.activeSpan());
+  }
 
   @Test
   public void nullKey() throws Exception {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
-    TracingKafkaProducer<Integer, String> producer = new TracingKafkaProducer<>(kafkaProducer,
-        mockTracer);
+    Producer<Integer, String> producer = createProducer();
 
     ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", "test");
     producer.send(record);
@@ -90,6 +121,12 @@ public class TracingKafkaTest {
     createConsumer(latch, null);
 
     producer.close();
+  }
+
+  private Producer<Integer, String> createProducer() {
+    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+    return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
   }
 
   private void createConsumer(final CountDownLatch latch, final Integer key)
@@ -137,6 +174,22 @@ public class TracingKafkaTest {
       assertTrue(operationName.equals("send")
           || operationName.equals("receive"));
     }
+  }
+
+  private MockSpan getByOperationName(List<MockSpan> spans, String operationName) {
+    List<MockSpan> found = new ArrayList<>();
+    for (MockSpan span : spans) {
+      if (operationName.equals(span.operationName())) {
+        found.add(span);
+      }
+    }
+
+    if (found.size() > 1) {
+      throw new RuntimeException("Ups, too many spans (" + found.size() + ") with operation name '"
+          + operationName + "'");
+    }
+
+    return found.isEmpty() ? null : found.get(0);
   }
 
 }
