@@ -17,7 +17,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-client</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
 </dependency>
 ```
 
@@ -31,7 +31,8 @@ Tracer tracer = ...
 // Instantiate KafkaProducer
 KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
 //Decorate KafkaProducer with TracingKafkaProducer
-TracingKafkaProducer<Integer, String> tracingKafkaProducer = new TracingKafkaProducer<>(kafkaProducer, tracer);
+TracingKafkaProducer<Integer, String> tracingKafkaProducer = new TracingKafkaProducer<>(kafkaProducer, 
+        tracer);
 
 // Send
 tracingKafkaProducer.send(...);
@@ -39,7 +40,8 @@ tracingKafkaProducer.send(...);
 // Instantiate KafkaConsumer
 KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
 // Decorate KafkaConsumer with TracingKafkaConsumer
-TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(kafkaConsumer, tracer);
+TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(kafkaConsumer, 
+        tracer);
 
 //Subscribe
 tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
