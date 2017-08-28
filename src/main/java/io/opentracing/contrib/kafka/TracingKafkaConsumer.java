@@ -207,6 +207,9 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
       Span span = spanBuilder.startManual();
       SpanDecorator.onResponse(record, span);
       span.finish();
+
+      // Inject created span context into record headers for extraction by client to continue span chain
+      TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
     }
   }
 }

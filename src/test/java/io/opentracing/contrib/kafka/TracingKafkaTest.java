@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import io.opentracing.ActiveSpan;
+import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
@@ -137,28 +138,28 @@ public class TracingKafkaTest {
         .consumerProps("sampleRawConsumer", "false", embeddedKafka);
     consumerProps.put("auto.offset.reset", "earliest");
 
-    executorService.execute(new Runnable() {
-      @Override
-      public void run() {
-        KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-        TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(
-            kafkaConsumer, mockTracer);
+    executorService.execute(() -> {
+      KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+      TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(
+          kafkaConsumer, mockTracer);
 
-        tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
+      tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
 
-        while (latch.getCount() > 0) {
-          ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(100);
-          for (ConsumerRecord<Integer, String> record : records) {
-            assertEquals("test", record.value());
-            if (key != null) {
-              assertEquals(key, record.key());
-            }
-            tracingKafkaConsumer.commitSync();
-            latch.countDown();
+      while (latch.getCount() > 0) {
+        ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(100);
+        for (ConsumerRecord<Integer, String> record : records) {
+          SpanContext spanContext = TracingKafkaUtils
+              .extractSpanContext(record.headers(), mockTracer);
+          assertNotNull(spanContext);
+          assertEquals("test", record.value());
+          if (key != null) {
+            assertEquals(key, record.key());
           }
+          tracingKafkaConsumer.commitSync();
+          latch.countDown();
         }
-        kafkaConsumer.close();
       }
+      kafkaConsumer.close();
     });
 
     assertTrue(latch.await(30, TimeUnit.SECONDS));

@@ -14,9 +14,16 @@ public class HeadersMapExtractAdapter implements TextMap {
 
   private final Map<String, String> map = new HashMap<>();
 
-  HeadersMapExtractAdapter(Headers headers) {
+  HeadersMapExtractAdapter(Headers headers, boolean second) {
     for (Header header : headers) {
-      map.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+      if (second) {
+        if (header.key().startsWith("second_span_")) {
+          map.put(header.key().replaceFirst("^second_span_", ""),
+              new String(header.value(), StandardCharsets.UTF_8));
+        }
+      } else {
+        map.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+      }
     }
   }
 
