@@ -47,6 +47,10 @@ tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
 // Get records
 ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(1000);
 
+// If needed get Span Context on the Producer side from polled record
+ConsumerRecord<Integer, String> record = ...
+SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
+
 ```
 
 [ci-img]: https://travis-ci.org/opentracing-contrib/java-kafka-client.svg?branch=master

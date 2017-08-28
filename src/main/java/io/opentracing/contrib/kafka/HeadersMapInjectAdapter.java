@@ -10,9 +10,11 @@ import org.apache.kafka.common.header.Headers;
 public class HeadersMapInjectAdapter implements TextMap {
 
   private final Headers headers;
+  private final boolean second;
 
-  HeadersMapInjectAdapter(Headers headers) {
+  HeadersMapInjectAdapter(Headers headers, boolean second) {
     this.headers = headers;
+    this.second = second;
   }
 
   @Override
@@ -22,6 +24,10 @@ public class HeadersMapInjectAdapter implements TextMap {
 
   @Override
   public void put(String key, String value) {
-    headers.add(key, value.getBytes(StandardCharsets.UTF_8));
+    if (second) {
+      headers.add("second_span_" + key, value.getBytes(StandardCharsets.UTF_8));
+    } else {
+      headers.add(key, value.getBytes(StandardCharsets.UTF_8));
+    }
   }
 }
