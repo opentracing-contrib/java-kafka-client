@@ -13,6 +13,8 @@
  */
 package io.opentracing.contrib.kafka.streams;
 
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -25,7 +27,7 @@ import io.opentracing.util.ThreadLocalActiveSpanSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -37,7 +39,6 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -78,15 +79,13 @@ public class TracingKafkaStreamsTest {
     KStream<Integer, String> kStream = builder
         .stream(intSerde, stringSerde, "stream-test");
 
-
-   kStream.map(
-       (key, value) -> new KeyValue<>(key, value + "map")).to("stream-out");
+    kStream.map((key, value) -> new KeyValue<>(key, value + "map")).to("stream-out");
 
     KafkaStreams streams = new KafkaStreams(builder, new StreamsConfig(config),
         new TracingKafkaClientSupplier(mockTracer));
     streams.start();
 
-    TimeUnit.SECONDS.sleep(5);
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(3));
 
     streams.close();
     producer.close();
@@ -113,5 +112,14 @@ public class TracingKafkaStreamsTest {
       assertTrue(operationName.equals("send")
           || operationName.equals("receive"));
     }
+  }
+
+  private Callable<Integer> reportedSpansSize() {
+    return new Callable<Integer>() {
+      @Override
+      public Integer call() throws Exception {
+        return mockTracer.finishedSpans().size();
+      }
+    };
   }
 }

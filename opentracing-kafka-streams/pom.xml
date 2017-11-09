@@ -39,6 +39,12 @@
       <artifactId>opentracing-kafka-client</artifactId>
       <version>0.0.5-SNAPSHOT</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 </project>

@@ -78,6 +78,12 @@
         <artifactId>kafka-streams</artifactId>
         <version>${kafka.version}</version>
       </dependency>
+
+      <dependency>
+        <groupId>org.awaitility</groupId>
+        <artifactId>awaitility</artifactId>
+        <version>3.0.0</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
