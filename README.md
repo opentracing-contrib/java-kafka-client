@@ -8,9 +8,11 @@ OpenTracing instrumentation for Apache Kafka Client
 
 - Java 8
 - Scala 2.12
-- Kafka_2.12 0.11.0.0
+- Kafka_2.12 0.11.0.1
 
 ## Installation
+
+### Kafka Client
 
 pom.xml
 ```xml
@@ -21,15 +23,33 @@ pom.xml
 </dependency>
 ```
 
+### Kafka Streams
+
+pom.xml
+```xml
+<dependency>
+    <groupId>io.opentracing.contrib</groupId>
+    <artifactId>opentracing-kafka-streams</artifactId>
+    <version>0.0.4</version>
+</dependency>
+```
+
 ## Usage
 
-
 ```java
+
 // Instantiate tracer
 Tracer tracer = ...
 
+```
+
+### Kafka Client
+
+```java
+
 // Instantiate KafkaProducer
 KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+
 //Decorate KafkaProducer with TracingKafkaProducer
 TracingKafkaProducer<Integer, String> tracingKafkaProducer = new TracingKafkaProducer<>(kafkaProducer, 
         tracer);
@@ -39,6 +59,7 @@ tracingKafkaProducer.send(...);
 
 // Instantiate KafkaConsumer
 KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+
 // Decorate KafkaConsumer with TracingKafkaConsumer
 TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(kafkaConsumer, 
         tracer);
@@ -54,6 +75,20 @@ ConsumerRecord<Integer, String> record = ...
 SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
 
 ```
+
+### Kafka Streams
+
+```java
+
+// Instantiate TracingKafkaClientSupplier
+KafkaClientSupplier supplier = TracingKafkaClientSupplier(tracer);
+
+// Provide supplier to KafkaStreams
+KafkaStreams streams = new KafkaStreams(builder, new StreamsConfig(config), supplier);
+streams.start();
+
+```
+
 
 [ci-img]: https://travis-ci.org/opentracing-contrib/java-kafka-client.svg?branch=master
 [ci]: https://travis-ci.org/opentracing-contrib/java-kafka-client
