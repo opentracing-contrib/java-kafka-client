@@ -29,7 +29,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
@@ -41,10 +40,10 @@ import org.apache.kafka.common.TopicPartition;
 public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   private final Tracer tracer;
-  private final KafkaConsumer<K, V> consumer;
+  private final Consumer<K, V> consumer;
 
 
-  public TracingKafkaConsumer(KafkaConsumer<K, V> consumer, Tracer tracer) {
+  public TracingKafkaConsumer(Consumer<K, V> consumer, Tracer tracer) {
     this.consumer = consumer;
     this.tracer = tracer;
   }
