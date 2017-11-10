@@ -115,11 +115,6 @@ public class TracingKafkaStreamsTest {
   }
 
   private Callable<Integer> reportedSpansSize() {
-    return new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        return mockTracer.finishedSpans().size();
-      }
-    };
+    return () -> mockTracer.finishedSpans().size();
   }
 }

@@ -19,7 +19,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-client</artifactId>
-    <version>0.0.5</version>
+    <version>0.0.6</version>
 </dependency>
 ```
 
@@ -30,7 +30,18 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-streams</artifactId>
-    <version>0.0.5</version>
+    <version>0.0.6</version>
+</dependency>
+```
+
+### Spring Kafka
+
+pom.xml
+```xml
+<dependency>
+    <groupId>io.opentracing.contrib</groupId>
+    <artifactId>opentracing-kafka-spring</artifactId>
+    <version>0.0.6</version>
 </dependency>
 ```
 
@@ -86,6 +97,37 @@ KafkaClientSupplier supplier = TracingKafkaClientSupplier(tracer);
 // Provide supplier to KafkaStreams
 KafkaStreams streams = new KafkaStreams(builder, new StreamsConfig(config), supplier);
 streams.start();
+
+```
+
+### Spring Kafka
+
+```java
+
+// Declare Tracer bean
+@Bean
+public Tracer tracer() {
+  return ...
+}
+
+
+// Decorate ConsumerFactory with TracingConsumerFactory
+@Bean
+public ConsumerFactory<Integer, String> consumerFactory() {
+  return new TracingConsumerFactory<>(new DefaultKafkaConsumerFactory<>(consumerProps()), tracer());
+}
+
+// Decorate ProducerFactory with TracingProducerFactory
+@Bean
+public ProducerFactory<Integer, String> producerFactory() {
+  return new TracingProducerFactory<>(new DefaultKafkaProducerFactory<>(producerProps()), tracer());
+}
+
+// Use decorated ProducerFactory in KafkaTemplate 
+@Bean
+public KafkaTemplate<Integer, String> kafkaTemplate() {
+  return new KafkaTemplate<>(producerFactory());
+}
 
 ```
 

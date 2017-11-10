@@ -24,7 +24,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -40,10 +39,10 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingKafkaProducer.class);
 
-  private KafkaProducer<K, V> producer;
+  private Producer<K, V> producer;
   private final Tracer tracer;
 
-  public TracingKafkaProducer(KafkaProducer<K, V> producer, Tracer tracer) {
+  public TracingKafkaProducer(Producer<K, V> producer, Tracer tracer) {
     this.producer = producer;
     this.tracer = tracer;
   }
