@@ -19,7 +19,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-client</artifactId>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
 </dependency>
 ```
 
@@ -30,7 +30,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-streams</artifactId>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
 </dependency>
 ```
 
