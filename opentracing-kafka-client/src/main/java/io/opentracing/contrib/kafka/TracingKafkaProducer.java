@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package io.opentracing.contrib.kafka;
 
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
@@ -90,8 +90,8 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
         record.headers());
     */
 
-    try (ActiveSpan span = buildAndInjectSpan(record)) {
-      Callback wrappedCallback = new TracingCallback(callback, span.capture());
+    try (Scope scope = buildAndInjectSpan(record)) {
+      Callback wrappedCallback = new TracingCallback(callback, scope);
       return producer.send(record, wrappedCallback);
     }
   }
@@ -121,7 +121,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     producer.close(timeout, timeUnit);
   }
 
-  private ActiveSpan buildAndInjectSpan(ProducerRecord<K, V> record) {
+  private Scope buildAndInjectSpan(ProducerRecord<K, V> record) {
     Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send")
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
 
@@ -131,16 +131,16 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
       spanBuilder.asChildOf(spanContext);
     }
 
-    ActiveSpan span = spanBuilder.startActive();
-    SpanDecorator.onSend(record, span);
+    Scope scope = spanBuilder.startActive(false);
+    SpanDecorator.onSend(record, scope.span());
 
     try {
-      TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
+      TracingKafkaUtils.inject(scope.span().context(), record.headers(), tracer);
     } catch (Exception e) {
       // it can happen if headers are read only (when record is sent second time)
       logger.error("failed to inject span context. sending record second time?", e);
     }
 
-    return span;
+    return scope;
   }
 }

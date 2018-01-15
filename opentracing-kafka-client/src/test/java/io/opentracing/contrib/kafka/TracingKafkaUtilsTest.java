@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,7 +22,7 @@ import static org.junit.Assert.assertTrue;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockSpan.MockContext;
 import io.opentracing.mock.MockTracer;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Before;
@@ -31,7 +31,7 @@ import org.junit.Test;
 
 public class TracingKafkaUtilsTest {
 
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalActiveSpanSource(),
+  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
 
   @Before

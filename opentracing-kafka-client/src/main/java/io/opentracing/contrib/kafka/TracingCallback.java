@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,8 +14,7 @@
 package io.opentracing.contrib.kafka;
 
 
-import io.opentracing.ActiveSpan;
-import io.opentracing.ActiveSpan.Continuation;
+import io.opentracing.Scope;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
@@ -25,19 +24,17 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 public class TracingCallback implements Callback {
 
   private final Callback callback;
-  private final Continuation continuation;
+  private final Scope scope;
 
-  TracingCallback(Callback callback, Continuation continuation) {
+  TracingCallback(Callback callback, Scope scope) {
     this.callback = callback;
-    this.continuation = continuation;
+    this.scope = scope;
   }
 
   @Override
   public void onCompletion(RecordMetadata metadata, Exception exception) {
-    ActiveSpan activeSpan = continuation.activate();
-
     if (exception != null) {
-      SpanDecorator.onError(exception, activeSpan);
+      SpanDecorator.onError(exception, scope.span());
     }
 
     try {
@@ -45,7 +42,8 @@ public class TracingCallback implements Callback {
         callback.onCompletion(metadata, exception);
       }
     } finally {
-      activeSpan.deactivate();
+      scope.span().finish();
+      scope.close();
     }
   }
 }

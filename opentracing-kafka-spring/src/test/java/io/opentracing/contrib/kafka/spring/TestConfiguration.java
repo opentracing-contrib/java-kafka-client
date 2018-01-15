@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import static io.opentracing.contrib.kafka.spring.TracingSpringKafkaTest.embedde
 
 import io.opentracing.mock.MockTracer;
 import io.opentracing.mock.MockTracer.Propagator;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -38,7 +38,7 @@ public class TestConfiguration {
 
   @Bean
   public MockTracer tracer() {
-    return new MockTracer(new ThreadLocalActiveSpanSource(), Propagator.TEXT_MAP);
+    return new MockTracer(new ThreadLocalScopeManager(), Propagator.TEXT_MAP);
   }
 
   @Bean
