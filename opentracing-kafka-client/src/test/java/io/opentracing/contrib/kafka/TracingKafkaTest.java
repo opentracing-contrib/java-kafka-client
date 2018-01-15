@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,12 +19,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
 import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +51,7 @@ public class TracingKafkaTest {
 
   @ClassRule
   public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(2, true, 2, "messages");
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalActiveSpanSource(),
+  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
 
   @Before
@@ -89,7 +89,7 @@ public class TracingKafkaTest {
   public void with_parent() throws Exception {
     Producer<Integer, String> producer = createProducer();
 
-    try (ActiveSpan activeSpan = mockTracer.buildSpan("parent").startActive()) {
+    try (Scope activeSpan = mockTracer.buildSpan("parent").startActive(true)) {
       producer.send(new ProducerRecord<>("messages", 1, "test"));
     }
 

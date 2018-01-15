@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  */
 package io.opentracing.contrib.kafka;
 
-import io.opentracing.ActiveSpan;
 import io.opentracing.Span;
 import io.opentracing.tag.Tags;
 import java.io.PrintWriter;
@@ -31,7 +30,7 @@ class SpanDecorator {
   /**
    * Called before record is sent by producer
    */
-  static <K, V> void onSend(ProducerRecord<K, V> record, ActiveSpan span) {
+  static <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
     Tags.COMPONENT.set(span, COMPONENT_NAME);
     Tags.MESSAGE_BUS_DESTINATION.set(span, record.topic());
     if (record.partition() != null) {
@@ -50,7 +49,7 @@ class SpanDecorator {
 
   }
 
-  static void onError(Exception exception, ActiveSpan span) {
+  static void onError(Exception exception, Span span) {
     Tags.ERROR.set(span, Boolean.TRUE);
     span.log(errorLogs(exception));
   }

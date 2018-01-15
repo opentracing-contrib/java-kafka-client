@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,11 +17,11 @@ package io.opentracing.contrib.kafka;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,7 +29,7 @@ import org.junit.Test;
 
 public class TracingCallbackTest {
 
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalActiveSpanSource(),
+  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
 
   @Before
@@ -39,12 +39,10 @@ public class TracingCallbackTest {
 
   @Test
   public void onCompletionWithError() throws Exception {
-    ActiveSpan span = mockTracer.buildSpan("test").startActive();
-
-    TracingCallback callback = new TracingCallback(null, span.capture());
-    callback.onCompletion(null, new RuntimeException("test"));
-
-    span.deactivate();
+    try (Scope scope = mockTracer.buildSpan("test").startActive(false)) {
+      TracingCallback callback = new TracingCallback(null, scope);
+      callback.onCompletion(null, new RuntimeException("test"));
+    }
 
     List<MockSpan> finished = mockTracer.finishedSpans();
     assertEquals(1, finished.size());
@@ -54,12 +52,10 @@ public class TracingCallbackTest {
 
   @Test
   public void onCompletion() throws Exception {
-    ActiveSpan span = mockTracer.buildSpan("test").startActive();
-
-    TracingCallback callback = new TracingCallback(null, span.capture());
-    callback.onCompletion(null, null);
-
-    span.deactivate();
+    try (Scope scope = mockTracer.buildSpan("test").startActive(false)) {
+      TracingCallback callback = new TracingCallback(null, scope);
+      callback.onCompletion(null, null);
+    }
 
     List<MockSpan> finished = mockTracer.finishedSpans();
     assertEquals(1, finished.size());

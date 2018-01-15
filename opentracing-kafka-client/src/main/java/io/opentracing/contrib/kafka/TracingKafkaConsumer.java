@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The OpenTracing Authors
+ * Copyright 2017-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -71,6 +71,11 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   @Override
   public void subscribe(Pattern pattern, ConsumerRebalanceListener listener) {
     consumer.subscribe(pattern, listener);
+  }
+
+  @Override
+  public void subscribe(Pattern pattern) {
+    consumer.subscribe(pattern);
   }
 
   @Override
@@ -216,7 +221,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
 
-      Span span = spanBuilder.startManual();
+      Span span = spanBuilder.start();
       SpanDecorator.onResponse(record, span);
       span.finish();
 

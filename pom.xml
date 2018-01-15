@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2017 The OpenTracing Authors
+    Copyright 2017-2018 The OpenTracing Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -32,7 +32,7 @@
   <name>${project.groupId}:${project.artifactId}</name>
   <description>OpenTracing Instrumentation for Apache Kafka Client</description>
   <url>https://github.com/opentracing-contrib/java-kafka-client</url>
-  <inceptionYear>2017</inceptionYear>
+  <inceptionYear>2017-2018</inceptionYear>
 
   <scm>
     <url>http://github.com/opentracing-contrib/java-kafka-client</url>
@@ -68,9 +68,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
-    <opentracing.version>0.30.0</opentracing.version>
-    <kafka.version>0.11.0.1</kafka.version>
-    <spring.kafka.version>2.0.1.RELEASE</spring.kafka.version>
+    <opentracing.version>0.31.0</opentracing.version>
+    <kafka.version>1.0.0</kafka.version>
+    <spring.kafka.version>2.1.0.RELEASE</spring.kafka.version>
   </properties>
 
   <dependencyManagement>
@@ -99,7 +99,7 @@
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka_2.12</artifactId>
-      <version>0.11.0.1</version>
+      <version>${kafka.version}</version>
     </dependency>
 
     <dependency>
@@ -136,7 +136,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.6.2</version>
+        <version>3.7.0</version>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
@@ -225,7 +225,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>2.10.4</version>
+            <version>3.0.0</version>
             <configuration>
               <failOnError>false</failOnError>
             </configuration>
