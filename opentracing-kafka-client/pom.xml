@@ -26,5 +26,11 @@
   <name>${project.groupId}:${project.artifactId}</name>
   <description>OpenTracing Instrumentation for Apache Kafka Client</description>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+    </dependency>
+  </dependencies>
 
 </project>

@@ -7,8 +7,7 @@ OpenTracing instrumentation for Apache Kafka Client
 ## Requirements
 
 - Java 8
-- Scala 2.12
-- Kafka_2.12 1.0.0
+- Kafka 1.0.0
 
 ## Installation
 
@@ -19,7 +18,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-client</artifactId>
-    <version>0.0.7</version>
+    <version>VERSION</version>
 </dependency>
 ```
 
@@ -30,7 +29,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-streams</artifactId>
-    <version>0.0.7</version>
+    <version>VERSION</version>
 </dependency>
 ```
 
@@ -41,7 +40,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-kafka-spring</artifactId>
-    <version>0.0.7</version>
+    <version>VERSION</version>
 </dependency>
 ```
 
