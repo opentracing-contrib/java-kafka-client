@@ -105,10 +105,23 @@ public class TracingKafkaStreamsTest {
 
   private void checkSpans(List<MockSpan> mockSpans) {
     for (MockSpan mockSpan : mockSpans) {
-      assertEquals(Tags.SPAN_KIND_CLIENT, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
+      String operationName = mockSpan.operationName();
+      if (operationName.equals("send")) {
+        assertEquals(Tags.SPAN_KIND_PRODUCER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
+        String topicName = (String) mockSpan.tags().get(Tags.MESSAGE_BUS_DESTINATION.getKey());
+        assertTrue(topicName.equals("stream-out") || topicName.equals("stream-test"));
+      }
+      else if (operationName.equals("receive"))
+      {
+        assertEquals(Tags.SPAN_KIND_CONSUMER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
+        assertEquals(0,mockSpan.tags().get("partition"));
+        long offset = (Long) mockSpan.tags().get("offset");
+        assertTrue(offset == 0L || offset == 1L || offset == 2L);
+        String topicName = (String) mockSpan.tags().get("topic");
+        assertTrue(topicName.equals("stream-out") || topicName.equals("stream-test"));
+      }
       assertEquals("java-kafka", mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
-      String operationName = mockSpan.operationName();
       assertTrue(operationName.equals("send")
           || operationName.equals("receive"));
     }
