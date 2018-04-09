@@ -217,7 +217,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     if (parentContext != null) {
 
       Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive")
-          .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
+          .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
 
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
 
