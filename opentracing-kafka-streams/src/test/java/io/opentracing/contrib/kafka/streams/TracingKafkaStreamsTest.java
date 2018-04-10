@@ -110,11 +110,9 @@ public class TracingKafkaStreamsTest {
         assertEquals(Tags.SPAN_KIND_PRODUCER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         String topicName = (String) mockSpan.tags().get(Tags.MESSAGE_BUS_DESTINATION.getKey());
         assertTrue(topicName.equals("stream-out") || topicName.equals("stream-test"));
-      }
-      else if (operationName.equals("receive"))
-      {
+      } else if (operationName.equals("receive")) {
         assertEquals(Tags.SPAN_KIND_CONSUMER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
-        assertEquals(0,mockSpan.tags().get("partition"));
+        assertEquals(0, mockSpan.tags().get("partition"));
         long offset = (Long) mockSpan.tags().get("offset");
         assertTrue(offset == 0L || offset == 1L || offset == 2L);
         String topicName = (String) mockSpan.tags().get("topic");
