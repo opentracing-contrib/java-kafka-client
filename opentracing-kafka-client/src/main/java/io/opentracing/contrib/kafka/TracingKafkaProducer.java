@@ -123,7 +123,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
   private Scope buildAndInjectSpan(ProducerRecord<K, V> record) {
     Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send")
-        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
+        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
 
     SpanContext spanContext = TracingKafkaUtils.extract(record.headers(), tracer);
 
