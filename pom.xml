@@ -67,8 +67,8 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.31.0</opentracing.version>
-    <kafka.version>1.0.0</kafka.version>
-    <spring.kafka.version>2.1.1.RELEASE</spring.kafka.version>
+    <kafka.version>1.0.1</kafka.version>
+    <spring.kafka.version>2.1.5.RELEASE</spring.kafka.version>
   </properties>
 
   <dependencyManagement>
@@ -88,7 +88,7 @@
       <dependency>
         <groupId>org.awaitility</groupId>
         <artifactId>awaitility</artifactId>
-        <version>3.0.0</version>
+        <version>3.1.0</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

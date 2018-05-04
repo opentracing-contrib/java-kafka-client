@@ -43,7 +43,7 @@ public class TracingKafkaUtilsTest {
   public void inject() {
     MockSpan span = mockTracer.buildSpan("test").start();
     Headers headers = new RecordHeaders();
-    assertTrue(headers.toArray().length == 0);
+    assertEquals(0, headers.toArray().length);
 
     TracingKafkaUtils.inject(span.context(), headers, mockTracer);
 
@@ -82,7 +82,7 @@ public class TracingKafkaUtilsTest {
   public void extract_second_no_context() {
     MockSpan span = mockTracer.buildSpan("first").start();
     Headers headers = new RecordHeaders();
-    assertTrue(headers.toArray().length == 0);
+    assertEquals(0, headers.toArray().length);
 
     // inject first
     TracingKafkaUtils.inject(span.context(), headers, mockTracer);
@@ -99,7 +99,7 @@ public class TracingKafkaUtilsTest {
   public void inject_and_extract_two_contexts() {
     MockSpan span = mockTracer.buildSpan("first").start();
     Headers headers = new RecordHeaders();
-    assertTrue(headers.toArray().length == 0);
+    assertEquals(0, headers.toArray().length);
 
     // inject first
     TracingKafkaUtils.inject(span.context(), headers, mockTracer);

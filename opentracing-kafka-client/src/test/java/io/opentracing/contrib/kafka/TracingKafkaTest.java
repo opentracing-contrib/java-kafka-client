@@ -36,11 +36,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -55,7 +53,7 @@ public class TracingKafkaTest {
       MockTracer.Propagator.TEXT_MAP);
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     mockTracer.reset();
   }
 
@@ -67,12 +65,8 @@ public class TracingKafkaTest {
     producer.send(new ProducerRecord<>("messages", 1, "test"));
 
     // Send 2
-    producer.send(new ProducerRecord<>("messages", 1, "test"), new Callback() {
-      @Override
-      public void onCompletion(RecordMetadata metadata, Exception exception) {
-        assertEquals("messages", metadata.topic());
-      }
-    });
+    producer.send(new ProducerRecord<>("messages", 1, "test"),
+        (metadata, exception) -> assertEquals("messages", metadata.topic()));
 
     final CountDownLatch latch = new CountDownLatch(2);
     createConsumer(latch, 1);
@@ -89,7 +83,7 @@ public class TracingKafkaTest {
   public void with_parent() throws Exception {
     Producer<Integer, String> producer = createProducer();
 
-    try (Scope activeSpan = mockTracer.buildSpan("parent").startActive(true)) {
+    try (Scope ignored = mockTracer.buildSpan("parent").startActive(true)) {
       producer.send(new ProducerRecord<>("messages", 1, "test"));
     }
 

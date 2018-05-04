@@ -36,9 +36,10 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.apache.kafka.streams.kstream.Produced;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -54,12 +55,12 @@ public class TracingKafkaStreamsTest {
       MockTracer.Propagator.TEXT_MAP);
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     mockTracer.reset();
   }
 
   @Test
-  public void test() throws Exception {
+  public void test() {
     Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 
     Properties config = new Properties();
@@ -75,13 +76,13 @@ public class TracingKafkaStreamsTest {
     final Serde<String> stringSerde = Serdes.String();
     final Serde<Integer> intSerde = Serdes.Integer();
 
-    KStreamBuilder builder = new KStreamBuilder();
-    KStream<Integer, String> kStream = builder
-        .stream(intSerde, stringSerde, "stream-test");
+    StreamsBuilder builder = new StreamsBuilder();
+    KStream<Integer, String> kStream = builder.stream("stream-test");
 
-    kStream.map((key, value) -> new KeyValue<>(key, value + "map")).to("stream-out");
+    kStream.map((key, value) -> new KeyValue<>(key, value + "map"))
+        .to("stream-out", Produced.with(intSerde, stringSerde));
 
-    KafkaStreams streams = new KafkaStreams(builder, new StreamsConfig(config),
+    KafkaStreams streams = new KafkaStreams(builder.build(), new StreamsConfig(config),
         new TracingKafkaClientSupplier(mockTracer));
     streams.start();
 

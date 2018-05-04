@@ -51,7 +51,7 @@ public class TracingSpringKafkaTest {
   }
 
   @Test
-  public void test() throws Exception {
+  public void test() {
     kafkaTemplate.send("spring", "message");
 
     await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));

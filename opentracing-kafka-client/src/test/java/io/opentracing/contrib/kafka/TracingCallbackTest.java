@@ -38,7 +38,7 @@ public class TracingCallbackTest {
   }
 
   @Test
-  public void onCompletionWithError() throws Exception {
+  public void onCompletionWithError() {
     try (Scope scope = mockTracer.buildSpan("test").startActive(false)) {
       TracingCallback callback = new TracingCallback(null, scope);
       callback.onCompletion(null, new RuntimeException("test"));
@@ -51,7 +51,7 @@ public class TracingCallbackTest {
   }
 
   @Test
-  public void onCompletion() throws Exception {
+  public void onCompletion() {
     try (Scope scope = mockTracer.buildSpan("test").startActive(false)) {
       TracingCallback callback = new TracingCallback(null, scope);
       callback.onCompletion(null, null);
