@@ -222,7 +222,7 @@ public class TracingKafkaTest {
         assertEquals(Tags.SPAN_KIND_CONSUMER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         assertEquals(0, mockSpan.tags().get("partition"));
         long offset = (Long) mockSpan.tags().get("offset");
-        assertTrue(offset == 0L || offset == 1L || offset == 2L);
+        assertTrue(offset >= 0L);
         assertEquals("messages", mockSpan.tags().get("topic"));
       }
       assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
