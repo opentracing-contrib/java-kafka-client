@@ -2,7 +2,10 @@
 
 
 # OpenTracing Apache Kafka Client Instrumentation
-OpenTracing instrumentation for Apache Kafka Client
+OpenTracing instrumentation for Apache Kafka Client.    
+Two solutions are provided:
+1. Based on decorated Producer and Consumer
+1. Based on Interceptors
 
 ## Requirements
 
@@ -55,36 +58,73 @@ Tracer tracer = ...
 
 ### Kafka Client
 
+#### Decorators based solution
+
 ```java
 
 // Instantiate KafkaProducer
-KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
 
 //Decorate KafkaProducer with TracingKafkaProducer
-TracingKafkaProducer<Integer, String> tracingKafkaProducer = new TracingKafkaProducer<>(kafkaProducer, 
+TracingKafkaProducer<Integer, String> tracingProducer = new TracingKafkaProducer<>(producer, 
         tracer);
 
 // Send
-tracingKafkaProducer.send(...);
+tracingProducer.send(...);
 
 // Instantiate KafkaConsumer
-KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 
 // Decorate KafkaConsumer with TracingKafkaConsumer
-TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(kafkaConsumer, 
+TracingKafkaConsumer<Integer, String> tracingConsumer = new TracingKafkaConsumer<>(consumer, 
         tracer);
 
 //Subscribe
-tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
+tracingConsumer.subscribe(Collections.singletonList("messages"));
 
 // Get records
-ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(1000);
+ConsumerRecords<Integer, String> records = tracingConsumer.poll(1000);
 
 // To retrieve SpanContext from polled record (Consumer side)
 ConsumerRecord<Integer, String> record = ...
 SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
 
 ```
+
+#### Interceptors based solution
+```java
+// Register tracer with GlobalTracer:
+GlobalTracer.register(tracer);
+
+// Add TracingProducerInterceptor to sender properties:
+senderProps.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, 
+          TracingProducerInterceptor.class.getName());
+
+// Instantiate KafkaProducer
+KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
+
+// Send
+producer.send(...);
+
+// Add TracingConsumerInterceptor to consumer properties:
+consumerProps.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
+          TracingConsumerInterceptor.class.getName());
+
+// Instantiate KafkaConsumer
+KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
+
+//Subscribe
+consumer.subscribe(Collections.singletonList("messages"));
+
+// Get records
+ConsumerRecords<Integer, String> records = consumer.poll(1000);
+
+// To retrieve SpanContext from polled record (Consumer side)
+ConsumerRecord<Integer, String> record = ...
+SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
+
+```
+
 
 ### Kafka Streams
 

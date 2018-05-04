@@ -24,6 +24,7 @@ import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
+import io.opentracing.util.GlobalTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,13 +34,17 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -49,12 +54,37 @@ public class TracingKafkaTest {
 
   @ClassRule
   public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(2, true, 2, "messages");
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
+  private static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
+
+  @BeforeClass
+  public static void init() {
+    GlobalTracer.register(mockTracer);
+  }
 
   @Before
   public void before() {
     mockTracer.reset();
+  }
+
+  @Test
+  public void with_interceptors() throws Exception {
+    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    senderProps
+        .put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, TracingProducerInterceptor.class.getName());
+    KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
+
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    final CountDownLatch latch = new CountDownLatch(1);
+    createConsumer(latch, 1, true);
+
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+    checkSpans(mockSpans);
+    assertNull(mockTracer.activeSpan());
   }
 
   @Test
@@ -69,7 +99,7 @@ public class TracingKafkaTest {
         (metadata, exception) -> assertEquals("messages", metadata.topic()));
 
     final CountDownLatch latch = new CountDownLatch(2);
-    createConsumer(latch, 1);
+    createConsumer(latch, 1, false);
 
     producer.close();
 
@@ -88,7 +118,7 @@ public class TracingKafkaTest {
     }
 
     final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, 1);
+    createConsumer(latch, 1, false);
 
     producer.close();
 
@@ -126,7 +156,7 @@ public class TracingKafkaTest {
     consumerProps.put("auto.offset.reset", "earliest");
 
     final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, null);
+    createConsumer(latch, null, false);
 
     producer.close();
   }
@@ -137,23 +167,32 @@ public class TracingKafkaTest {
     return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
   }
 
-  private void createConsumer(final CountDownLatch latch, final Integer key)
+  private void createConsumer(final CountDownLatch latch, final Integer key,
+      final boolean withInterceptor)
       throws InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     final Map<String, Object> consumerProps = KafkaTestUtils
         .consumerProps("sampleRawConsumer", "false", embeddedKafka);
     consumerProps.put("auto.offset.reset", "earliest");
+    if (withInterceptor) {
+      consumerProps.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
+          TracingConsumerInterceptor.class.getName());
+    }
 
     executorService.execute(() -> {
       KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-      TracingKafkaConsumer<Integer, String> tracingKafkaConsumer = new TracingKafkaConsumer<>(
-          kafkaConsumer, mockTracer);
+      Consumer<Integer, String> consumer;
+      if (withInterceptor) {
+        consumer = kafkaConsumer;
+      } else {
+        consumer = new TracingKafkaConsumer<>(kafkaConsumer, mockTracer);
+      }
 
-      tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
+      consumer.subscribe(Collections.singletonList("messages"));
 
       while (latch.getCount() > 0) {
-        ConsumerRecords<Integer, String> records = tracingKafkaConsumer.poll(100);
+        ConsumerRecords<Integer, String> records = consumer.poll(100);
         for (ConsumerRecord<Integer, String> record : records) {
           SpanContext spanContext = TracingKafkaUtils
               .extractSpanContext(record.headers(), mockTracer);
@@ -162,7 +201,7 @@ public class TracingKafkaTest {
           if (key != null) {
             assertEquals(key, record.key());
           }
-          tracingKafkaConsumer.commitSync();
+          consumer.commitSync();
           latch.countDown();
         }
       }

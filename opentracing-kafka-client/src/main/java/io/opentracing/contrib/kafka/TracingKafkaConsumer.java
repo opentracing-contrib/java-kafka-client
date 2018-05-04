@@ -14,11 +14,7 @@
 package io.opentracing.contrib.kafka;
 
 
-import io.opentracing.References;
-import io.opentracing.Span;
-import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.tag.Tags;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +89,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     ConsumerRecords<K, V> records = consumer.poll(timeout);
 
     for (ConsumerRecord<K, V> record : records) {
-      buildAndFinishChildSpan(record);
+      TracingKafkaUtils.buildAndFinishChildSpan(record, tracer);
     }
 
     return records;
@@ -209,24 +205,5 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   @Override
   public void wakeup() {
     consumer.wakeup();
-  }
-
-  private void buildAndFinishChildSpan(ConsumerRecord<K, V> record) {
-    SpanContext parentContext = TracingKafkaUtils.extract(record.headers(), tracer);
-
-    if (parentContext != null) {
-
-      Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive")
-          .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
-
-      spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
-
-      Span span = spanBuilder.start();
-      SpanDecorator.onResponse(record, span);
-      span.finish();
-
-      // Inject created span context into record headers for extraction by client to continue span chain
-      TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
-    }
   }
 }
