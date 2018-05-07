@@ -15,9 +15,7 @@ package io.opentracing.contrib.kafka;
 
 
 import io.opentracing.Scope;
-import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.tag.Tags;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -90,7 +88,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
         record.headers());
     */
 
-    try (Scope scope = buildAndInjectSpan(record)) {
+    try (Scope scope = TracingKafkaUtils.buildAndInjectSpan(record, tracer)) {
       Callback wrappedCallback = new TracingCallback(callback, scope);
       return producer.send(record, wrappedCallback);
     }
@@ -121,26 +119,4 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     producer.close(timeout, timeUnit);
   }
 
-  private Scope buildAndInjectSpan(ProducerRecord<K, V> record) {
-    Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send")
-        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
-
-    SpanContext spanContext = TracingKafkaUtils.extract(record.headers(), tracer);
-
-    if (spanContext != null) {
-      spanBuilder.asChildOf(spanContext);
-    }
-
-    Scope scope = spanBuilder.startActive(false);
-    SpanDecorator.onSend(record, scope.span());
-
-    try {
-      TracingKafkaUtils.inject(scope.span().context(), record.headers(), tracer);
-    } catch (Exception e) {
-      // it can happen if headers are read only (when record is sent second time)
-      logger.error("failed to inject span context. sending record second time?", e);
-    }
-
-    return scope;
-  }
 }

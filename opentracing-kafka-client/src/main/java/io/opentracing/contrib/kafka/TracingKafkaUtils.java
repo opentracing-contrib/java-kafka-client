@@ -14,12 +14,21 @@
 package io.opentracing.contrib.kafka;
 
 
+import io.opentracing.References;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
+import io.opentracing.tag.Tags;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TracingKafkaUtils {
+  private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
 
   /**
    * Extract Span Context from record headers
@@ -65,5 +74,47 @@ public class TracingKafkaUtils {
       Tracer tracer) {
     tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
         new HeadersMapInjectAdapter(headers, true));
+  }
+
+  static <K,V> Scope buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
+    Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send")
+        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
+
+    SpanContext spanContext = TracingKafkaUtils.extract(record.headers(), tracer);
+
+    if (spanContext != null) {
+      spanBuilder.asChildOf(spanContext);
+    }
+
+    Scope scope = spanBuilder.startActive(false);
+    SpanDecorator.onSend(record, scope.span());
+
+    try {
+      TracingKafkaUtils.inject(scope.span().context(), record.headers(), tracer);
+    } catch (Exception e) {
+      // it can happen if headers are read only (when record is sent second time)
+      logger.error("failed to inject span context. sending record second time?", e);
+    }
+
+    return scope;
+  }
+
+  static <K,V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer) {
+    SpanContext parentContext = TracingKafkaUtils.extract(record.headers(), tracer);
+
+    if (parentContext != null) {
+
+      Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive")
+          .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
+
+      spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
+
+      Span span = spanBuilder.start();
+      SpanDecorator.onResponse(record, span);
+      span.finish();
+
+      // Inject created span context into record headers for extraction by client to continue span chain
+      TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
+    }
   }
 }
