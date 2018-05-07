@@ -17,6 +17,8 @@ import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.TracingKafkaConsumer;
 import io.opentracing.contrib.kafka.TracingKafkaProducer;
 import java.util.Map;
+
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -31,6 +33,12 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
 
   public TracingKafkaClientSupplier(Tracer tracer) {
     this.tracer = tracer;
+  }
+
+  // This method is required by Kafka Streams >=1.1, and optional for Kafka Streams <1.1
+  public AdminClient getAdminClient(final Map<String, Object> config) {
+    // create a new client upon each call; but expect this call to be only triggered once so this should be fine
+    return AdminClient.create(config);
   }
 
   @Override
