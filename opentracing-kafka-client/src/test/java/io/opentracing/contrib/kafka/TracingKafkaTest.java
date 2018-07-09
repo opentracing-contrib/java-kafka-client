@@ -34,6 +34,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -77,7 +79,7 @@ public class TracingKafkaTest {
     producer.send(new ProducerRecord<>("messages", 1, "test"));
 
     final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, 1, true);
+    createConsumer(latch, 1, true, null);
 
     producer.close();
 
@@ -99,13 +101,39 @@ public class TracingKafkaTest {
         (metadata, exception) -> assertEquals("messages", metadata.topic()));
 
     final CountDownLatch latch = new CountDownLatch(2);
-    createConsumer(latch, 1, false);
+    createConsumer(latch, 1, false, null);
 
     producer.close();
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(4, mockSpans.size());
     checkSpans(mockSpans);
+    assertNull(mockTracer.activeSpan());
+  }
+
+  @Test
+  public void testWithTopicNameProvider() throws Exception {
+    Producer<Integer, String> producer = createNameProvidedProducer(ClientSpanNameProvider.PRODUCER_TOPIC);
+
+    // Send 1
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    // Send 2
+    producer.send(new ProducerRecord<>("messages", 1, "test"),
+            (metadata, exception) -> assertEquals("messages", metadata.topic()));
+
+    final CountDownLatch latch = new CountDownLatch(2);
+    createConsumer(latch, 1, false, ClientSpanNameProvider.CONSUMER_TOPIC);
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(4, mockSpans.size());
+    for (MockSpan mockSpan : mockSpans) {
+      String operationName = mockSpan.operationName();
+      assertEquals("messages", operationName);
+      String spanKind = (String) mockSpan.tags().get(Tags.SPAN_KIND.getKey());
+      assertTrue(spanKind.equals(Tags.SPAN_KIND_CONSUMER) || spanKind.equals(Tags.SPAN_KIND_PRODUCER));
+    }
     assertNull(mockTracer.activeSpan());
   }
 
@@ -118,7 +146,7 @@ public class TracingKafkaTest {
     }
 
     final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, 1, false);
+    createConsumer(latch, 1, false, null);
 
     producer.close();
 
@@ -156,7 +184,7 @@ public class TracingKafkaTest {
     consumerProps.put("auto.offset.reset", "earliest");
 
     final CountDownLatch latch = new CountDownLatch(1);
-    createConsumer(latch, null, false);
+    createConsumer(latch, null, false, null);
 
     producer.close();
   }
@@ -167,9 +195,17 @@ public class TracingKafkaTest {
     return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
   }
 
+  private Producer<Integer, String> createNameProvidedProducer(BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
+    return new TracingKafkaProducer<>(kafkaProducer, mockTracer, producerSpanNameProvider);
+  }
+
   private void createConsumer(final CountDownLatch latch, final Integer key,
-      final boolean withInterceptor)
+      final boolean withInterceptor, final BiFunction<String, ConsumerRecord, String> consumerNameProvider)
       throws InterruptedException {
+
+
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     final Map<String, Object> consumerProps = KafkaTestUtils
@@ -186,9 +222,8 @@ public class TracingKafkaTest {
       if (withInterceptor) {
         consumer = kafkaConsumer;
       } else {
-        consumer = new TracingKafkaConsumer<>(kafkaConsumer, mockTracer);
+        consumer = new TracingKafkaConsumer<>(kafkaConsumer, mockTracer, consumerNameProvider);
       }
-
       consumer.subscribe(Collections.singletonList("messages"));
 
       while (latch.getCount() > 0) {
