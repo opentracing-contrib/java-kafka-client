@@ -14,23 +14,38 @@
 package io.opentracing.contrib.kafka.spring;
 
 import io.opentracing.Tracer;
+import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.TracingKafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.ProducerFactory;
+
+import java.util.function.BiFunction;
 
 public class TracingProducerFactory<K, V> implements ProducerFactory<K, V> {
 
   private final ProducerFactory<K, V> producerFactory;
   private final Tracer tracer;
+  private final BiFunction<String, ProducerRecord, String> producerSpanNameProvider;
 
   public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer) {
     this.producerFactory = producerFactory;
     this.tracer = tracer;
+    this.producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_OPERATION_NAME;
+  }
+
+  public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer,
+                                BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    this.producerFactory = producerFactory;
+    this.tracer = tracer;
+    this.producerSpanNameProvider = (producerSpanNameProvider == null)
+      ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
+      : producerSpanNameProvider;
   }
 
   @Override
   public Producer<K, V> createProducer() {
-    return new TracingKafkaProducer<>(producerFactory.createProducer(), tracer);
+    return new TracingKafkaProducer<>(producerFactory.createProducer(), tracer, producerSpanNameProvider);
   }
 
   @Override

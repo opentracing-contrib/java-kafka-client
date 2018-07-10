@@ -27,6 +27,8 @@ import org.apache.kafka.common.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.BiFunction;
+
 public class TracingKafkaUtils {
   private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
 
@@ -77,7 +79,12 @@ public class TracingKafkaUtils {
   }
 
   static <K,V> Scope buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
-    Tracer.SpanBuilder spanBuilder = tracer.buildSpan("send")
+    return buildAndInjectSpan(record, tracer, ClientSpanNameProvider.PRODUCER_OPERATION_NAME);
+  }
+
+  static <K,V> Scope buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
+                                        BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    Tracer.SpanBuilder spanBuilder = tracer.buildSpan(producerSpanNameProvider.apply("send", record))
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
 
     SpanContext spanContext = TracingKafkaUtils.extract(record.headers(), tracer);
@@ -100,11 +107,16 @@ public class TracingKafkaUtils {
   }
 
   static <K,V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer) {
+    buildAndFinishChildSpan(record, tracer, ClientSpanNameProvider.CONSUMER_OPERATION_NAME);
+  }
+
+  static <K,V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
+                                            BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     SpanContext parentContext = TracingKafkaUtils.extract(record.headers(), tracer);
 
     if (parentContext != null) {
 
-      Tracer.SpanBuilder spanBuilder = tracer.buildSpan("receive")
+      Tracer.SpanBuilder spanBuilder = tracer.buildSpan(consumerSpanNameProvider.apply("receive", record))
           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
 
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
