@@ -254,6 +254,10 @@ spanNameProvider be provided:
 - `CONSUMER_OPERATION_NAME_TOPIC` and `PRODUCER_OPERATION_NAME_TOPIC` : Returns "`operationName` - `record.topic()`".
 - `CONSUMER_PREFIXED_OPERATION_NAME_TOPIC(String prefix)` and `PRODUCER_PREFIXED_OPERATION_NAME_TOPIC(String prefix)` : Returns a String concatenation of `prefix` and "`operationName` - `record.topic()`".
 
+## License
+
+[Apache 2.0 License](./LICENSE).
+
 [ci-img]: https://travis-ci.org/opentracing-contrib/java-kafka-client.svg?branch=master
 [ci]: https://travis-ci.org/opentracing-contrib/java-kafka-client
 [cov-img]: https://coveralls.io/repos/github/opentracing-contrib/java-kafka-client/badge.svg?branch=master
