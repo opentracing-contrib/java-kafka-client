@@ -14,7 +14,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.opentracing.contrib</groupId>
   <artifactId>opentracing-kafka-parent</artifactId>
@@ -67,8 +69,8 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.31.0</opentracing.version>
-    <kafka.version>1.0.1</kafka.version>
-    <spring.kafka.version>2.1.5.RELEASE</spring.kafka.version>
+    <kafka.version>1.0.2</kafka.version>
+    <spring.kafka.version>2.1.8.RELEASE</spring.kafka.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.1</jacoco-maven-plugin.version>
   </properties>
@@ -90,7 +92,7 @@
       <dependency>
         <groupId>org.awaitility</groupId>
         <artifactId>awaitility</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.2</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -135,13 +137,14 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.7.0</version>
+        <version>3.8.0</version>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
         <version>2.5.3</version>
         <configuration>
@@ -243,7 +246,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.1</version>
             <configuration>
               <failOnError>false</failOnError>
             </configuration>
