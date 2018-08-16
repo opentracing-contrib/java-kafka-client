@@ -16,13 +16,13 @@ package io.opentracing.contrib.kafka.spring;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.TracingKafkaProducer;
+import java.util.function.BiFunction;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.kafka.core.ProducerFactory;
 
-import java.util.function.BiFunction;
-
-public class TracingProducerFactory<K, V> implements ProducerFactory<K, V> {
+public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, DisposableBean {
 
   private final ProducerFactory<K, V> producerFactory;
   private final Tracer tracer;
@@ -35,21 +35,29 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V> {
   }
 
   public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer,
-                                BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this.producerFactory = producerFactory;
     this.tracer = tracer;
     this.producerSpanNameProvider = (producerSpanNameProvider == null)
-      ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
-      : producerSpanNameProvider;
+        ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
+        : producerSpanNameProvider;
   }
 
   @Override
   public Producer<K, V> createProducer() {
-    return new TracingKafkaProducer<>(producerFactory.createProducer(), tracer, producerSpanNameProvider);
+    return new TracingKafkaProducer<>(producerFactory.createProducer(), tracer,
+        producerSpanNameProvider);
   }
 
   @Override
   public boolean transactionCapable() {
     return producerFactory.transactionCapable();
+  }
+
+  @Override
+  public void destroy() throws Exception {
+    if (producerFactory instanceof DisposableBean) {
+      ((DisposableBean) producerFactory).destroy();
+    }
   }
 }
