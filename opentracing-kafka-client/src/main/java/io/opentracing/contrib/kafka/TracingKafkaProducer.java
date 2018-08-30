@@ -16,12 +16,12 @@ package io.opentracing.contrib.kafka;
 
 import io.opentracing.Scope;
 import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -49,12 +49,28 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     this.producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_OPERATION_NAME;
   }
 
-  public TracingKafkaProducer(Producer<K, V> producer, Tracer tracer, BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingKafkaProducer(Producer<K, V> producer) {
+    this(producer, GlobalTracer.get());
+  }
+
+  public TracingKafkaProducer(Producer<K, V> producer, Tracer tracer,
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this.producer = producer;
     this.tracer = tracer;
     this.producerSpanNameProvider = (producerSpanNameProvider == null)
-      ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
-      : producerSpanNameProvider;
+        ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
+        : producerSpanNameProvider;
+  }
+
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingKafkaProducer(Producer<K, V> producer,
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    this(producer, GlobalTracer.get(), producerSpanNameProvider);
   }
 
   @Override
@@ -100,7 +116,8 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
         record.headers());
     */
 
-    try (Scope scope = TracingKafkaUtils.buildAndInjectSpan(record, tracer, producerSpanNameProvider)) {
+    try (Scope scope = TracingKafkaUtils
+        .buildAndInjectSpan(record, tracer, producerSpanNameProvider)) {
       Callback wrappedCallback = new TracingCallback(callback, scope);
       return producer.send(record, wrappedCallback);
     }

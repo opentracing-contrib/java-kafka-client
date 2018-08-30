@@ -15,6 +15,14 @@ package io.opentracing.contrib.kafka;
 
 
 import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -26,14 +34,6 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.regex.Pattern;
 
 public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
@@ -48,13 +48,28 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     this.consumerSpanNameProvider = ClientSpanNameProvider.CONSUMER_OPERATION_NAME;
   }
 
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingKafkaConsumer(Consumer<K, V> consumer) {
+    this(consumer, GlobalTracer.get());
+  }
+
   public TracingKafkaConsumer(Consumer<K, V> consumer, Tracer tracer,
-                BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     this.consumer = consumer;
     this.tracer = tracer;
     this.consumerSpanNameProvider = (consumerSpanNameProvider == null)
         ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
         : consumerSpanNameProvider;
+  }
+
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingKafkaConsumer(Consumer<K, V> consumer,
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+    this(consumer, GlobalTracer.get(), consumerSpanNameProvider);
   }
 
   @Override
@@ -130,7 +145,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public void commitAsync(Map<TopicPartition, OffsetAndMetadata> offsets,
-              OffsetCommitCallback callback) {
+      OffsetCommitCallback callback) {
     consumer.commitAsync(offsets, callback);
   }
 
