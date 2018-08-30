@@ -17,9 +17,9 @@ import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.TracingKafkaConsumer;
 import io.opentracing.contrib.kafka.TracingKafkaProducer;
+import io.opentracing.util.GlobalTracer;
 import java.util.Map;
 import java.util.function.BiFunction;
-
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -43,16 +43,32 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
     this.producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_OPERATION_NAME;
   }
 
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingKafkaClientSupplier() {
+    this(GlobalTracer.get());
+  }
+
   public TracingKafkaClientSupplier(Tracer tracer,
-                                    BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
-                                    BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this.tracer = tracer;
     this.consumerSpanNameProvider = (consumerSpanNameProvider == null)
-            ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
-            : consumerSpanNameProvider;
+        ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
+        : consumerSpanNameProvider;
     this.producerSpanNameProvider = (producerSpanNameProvider == null)
-            ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
-            : producerSpanNameProvider;
+        ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
+        : producerSpanNameProvider;
+  }
+
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingKafkaClientSupplier(
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    this(GlobalTracer.get(), consumerSpanNameProvider, producerSpanNameProvider);
   }
 
   // This method is required by Kafka Streams >=1.1, and optional for Kafka Streams <1.1
@@ -65,7 +81,7 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
   public Producer<byte[], byte[]> getProducer(Map<String, Object> config) {
     return new TracingKafkaProducer<>(
         new KafkaProducer<>(config, new ByteArraySerializer(), new ByteArraySerializer()),
-            tracer, producerSpanNameProvider);
+        tracer, producerSpanNameProvider);
   }
 
   @Override

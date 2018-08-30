@@ -16,9 +16,9 @@ package io.opentracing.contrib.kafka.spring;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.TracingKafkaConsumer;
+import io.opentracing.util.GlobalTracer;
 import java.util.Map;
 import java.util.function.BiFunction;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -36,23 +36,40 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
     this.consumerSpanNameProvider = ClientSpanNameProvider.CONSUMER_OPERATION_NAME;
   }
 
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory) {
+    this(consumerFactory, GlobalTracer.get());
+  }
+
   public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory, Tracer tracer,
-                                BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     this.tracer = tracer;
     this.consumerFactory = consumerFactory;
     this.consumerSpanNameProvider = (consumerSpanNameProvider == null)
-      ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
-      : consumerSpanNameProvider;
+        ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
+        : consumerSpanNameProvider;
+  }
+
+  /**
+   * GlobalTracer is used to get tracer
+   */
+  public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory,
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+    this(consumerFactory, GlobalTracer.get(), consumerSpanNameProvider);
   }
 
   @Override
   public Consumer<K, V> createConsumer() {
-    return new TracingKafkaConsumer<>(consumerFactory.createConsumer(), tracer, consumerSpanNameProvider);
+    return new TracingKafkaConsumer<>(consumerFactory.createConsumer(), tracer,
+        consumerSpanNameProvider);
   }
 
   @Override
   public Consumer<K, V> createConsumer(String clientIdSuffix) {
-    return new TracingKafkaConsumer<>(consumerFactory.createConsumer(clientIdSuffix), tracer, consumerSpanNameProvider);
+    return new TracingKafkaConsumer<>(consumerFactory.createConsumer(clientIdSuffix), tracer,
+        consumerSpanNameProvider);
   }
 
   @Override
