@@ -32,12 +32,8 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TracingKafkaProducer<K, V> implements Producer<K, V> {
-
-  private static final Logger logger = LoggerFactory.getLogger(TracingKafkaProducer.class);
 
   private Producer<K, V> producer;
   private final Tracer tracer;
@@ -118,7 +114,7 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
     try (Scope scope = TracingKafkaUtils
         .buildAndInjectSpan(record, tracer, producerSpanNameProvider)) {
-      Callback wrappedCallback = new TracingCallback(callback, scope);
+      Callback wrappedCallback = new TracingCallback(callback, scope.span(), tracer);
       return producer.send(record, wrappedCallback);
     }
   }
