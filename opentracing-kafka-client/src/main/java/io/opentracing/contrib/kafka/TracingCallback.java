@@ -15,6 +15,8 @@ package io.opentracing.contrib.kafka;
 
 
 import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
@@ -22,28 +24,26 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  * Callback executed after the producer has finished sending a message
  */
 public class TracingCallback implements Callback {
-
   private final Callback callback;
-  private final Scope scope;
+  private final Span span;
+  private final Tracer tracer;
 
-  TracingCallback(Callback callback, Scope scope) {
+  TracingCallback(Callback callback, Span span, Tracer tracer) {
     this.callback = callback;
-    this.scope = scope;
+    this.span = span;
+    this.tracer = tracer;
   }
 
   @Override
   public void onCompletion(RecordMetadata metadata, Exception exception) {
     if (exception != null) {
-      SpanDecorator.onError(exception, scope.span());
+      SpanDecorator.onError(exception, span);
     }
 
-    try {
+    try (Scope ignored = tracer.scopeManager().activate(span, true)) {
       if (callback != null) {
         callback.onCompletion(metadata, exception);
       }
-    } finally {
-      scope.span().finish();
-      scope.close();
     }
   }
 }
