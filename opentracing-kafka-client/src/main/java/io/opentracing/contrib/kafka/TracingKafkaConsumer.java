@@ -16,6 +16,7 @@ package io.opentracing.contrib.kafka;
 
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -124,13 +125,34 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public ConsumerRecords<K, V> poll(Duration duration) {
+    ConsumerRecords<K, V> records = consumer.poll(duration);
+
+    for (ConsumerRecord<K, V> record : records) {
+      TracingKafkaUtils.buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider);
+    }
+
+    return records;
+  }
+
+  @Override
   public void commitSync() {
     consumer.commitSync();
   }
 
   @Override
+  public void commitSync(Duration duration) {
+    consumer.commitSync(duration);
+  }
+
+  @Override
   public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets) {
     consumer.commitSync(offsets);
+  }
+
+  @Override
+  public void commitSync(Map<TopicPartition, OffsetAndMetadata> map, Duration duration) {
+    consumer.commitSync(map, duration);
   }
 
   @Override
@@ -170,8 +192,18 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public long position(TopicPartition topicPartition, Duration duration) {
+    return consumer.position(topicPartition, duration);
+  }
+
+  @Override
   public OffsetAndMetadata committed(TopicPartition partition) {
     return consumer.committed(partition);
+  }
+
+  @Override
+  public OffsetAndMetadata committed(TopicPartition topicPartition, Duration duration) {
+    return consumer.committed(topicPartition, duration);
   }
 
   @Override
@@ -185,8 +217,18 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public List<PartitionInfo> partitionsFor(String s, Duration duration) {
+    return consumer.partitionsFor(s, duration);
+  }
+
+  @Override
   public Map<String, List<PartitionInfo>> listTopics() {
     return consumer.listTopics();
+  }
+
+  @Override
+  public Map<String, List<PartitionInfo>> listTopics(Duration duration) {
+    return consumer.listTopics(duration);
   }
 
   @Override
@@ -211,13 +253,31 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> map,
+      Duration duration) {
+    return consumer.offsetsForTimes(map, duration);
+  }
+
+  @Override
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
     return consumer.beginningOffsets(partitions);
   }
 
   @Override
+  public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> collection,
+      Duration duration) {
+    return consumer.beginningOffsets(collection, duration);
+  }
+
+  @Override
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
     return consumer.endOffsets(partitions);
+  }
+
+  @Override
+  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> collection,
+      Duration duration) {
+    return consumer.endOffsets(collection, duration);
   }
 
   @Override
@@ -228,6 +288,11 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   @Override
   public void close(long l, TimeUnit timeUnit) {
     consumer.close(l, timeUnit);
+  }
+
+  @Override
+  public void close(Duration duration) {
+    consumer.close(duration);
   }
 
   @Override

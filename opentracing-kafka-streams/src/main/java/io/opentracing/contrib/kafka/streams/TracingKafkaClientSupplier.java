@@ -97,4 +97,11 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
         new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer()),
         tracer, consumerSpanNameProvider);
   }
+
+  @Override
+  public Consumer<byte[], byte[]> getGlobalConsumer(Map<String, Object> config) {
+    return new TracingKafkaConsumer<>(
+        new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer()),
+        tracer, consumerSpanNameProvider);
+  }
 }

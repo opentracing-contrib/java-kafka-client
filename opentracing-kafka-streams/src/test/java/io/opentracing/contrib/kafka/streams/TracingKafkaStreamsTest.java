@@ -82,7 +82,7 @@ public class TracingKafkaStreamsTest {
     kStream.map((key, value) -> new KeyValue<>(key, value + "map"))
         .to("stream-out", Produced.with(intSerde, stringSerde));
 
-    KafkaStreams streams = new KafkaStreams(builder.build(), new StreamsConfig(config),
+    KafkaStreams streams = new KafkaStreams(builder.build(), config,
         new TracingKafkaClientSupplier(mockTracer));
     streams.start();
 
