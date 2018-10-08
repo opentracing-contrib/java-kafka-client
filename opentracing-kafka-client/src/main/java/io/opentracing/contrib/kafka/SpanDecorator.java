@@ -26,12 +26,13 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 class SpanDecorator {
 
   static final String COMPONENT_NAME = "java-kafka";
+  static final String KAFKA_SERVICE = "kafka";
 
   /**
    * Called before record is sent by producer
    */
   static <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
-    Tags.COMPONENT.set(span, COMPONENT_NAME);
+    setCommonTags(span);
     Tags.MESSAGE_BUS_DESTINATION.set(span, record.topic());
     if (record.partition() != null) {
       span.setTag("partition", record.partition());
@@ -42,7 +43,7 @@ class SpanDecorator {
    * Called when record is received in consumer
    */
   static <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
-    Tags.COMPONENT.set(span, COMPONENT_NAME);
+    setCommonTags(span);
     span.setTag("partition", record.partition());
     span.setTag("topic", record.topic());
     span.setTag("offset", record.offset());
@@ -67,5 +68,10 @@ class SpanDecorator {
     errorLogs.put("stack", sw.toString());
 
     return errorLogs;
+  }
+
+  private static void setCommonTags(Span span){
+      Tags.COMPONENT.set(span, COMPONENT_NAME);
+      Tags.PEER_SERVICE.set(span, KAFKA_SERVICE);
   }
 }
