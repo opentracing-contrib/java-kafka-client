@@ -68,7 +68,7 @@
 
     <opentracing.version>0.31.0</opentracing.version>
     <kafka.version>2.0.0</kafka.version>
-    <spring.kafka.version>2.1.10.RELEASE</spring.kafka.version>
+    <spring.kafka.version>2.2.0.RELEASE</spring.kafka.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.2</jacoco-maven-plugin.version>
   </properties>
