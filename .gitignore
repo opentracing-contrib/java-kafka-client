@@ -1,3 +1,9 @@
 .idea/
 *.iml
 target/
+.project
+.classpath
+.settings/**/*.*
+opentracing-kafka-client/.settings/**/*.*
+opentracing-kafka-spring/.settings/**/*.*
+opentracing-kafka-streams/.settings/**/*.*
