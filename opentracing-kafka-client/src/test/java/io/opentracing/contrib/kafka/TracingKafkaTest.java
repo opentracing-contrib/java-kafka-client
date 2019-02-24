@@ -160,10 +160,10 @@ public class TracingKafkaTest {
       assertEquals(parent.context().traceId(), span.context().traceId());
     }
 
-    MockSpan sendSpan = getByOperationName(mockSpans, "send");
+    MockSpan sendSpan = getByOperationName(mockSpans, TracingKafkaUtils.TO_PREFIX + "messages");
     assertNotNull(sendSpan);
 
-    MockSpan receiveSpan = getByOperationName(mockSpans, "receive");
+    MockSpan receiveSpan = getByOperationName(mockSpans, TracingKafkaUtils.FROM_PREFIX + "messages");
     assertNotNull(receiveSpan);
 
     assertEquals(sendSpan.context().spanId(), receiveSpan.parentId());
@@ -250,10 +250,10 @@ public class TracingKafkaTest {
   private void checkSpans(List<MockSpan> mockSpans) {
     for (MockSpan mockSpan : mockSpans) {
       String operationName = mockSpan.operationName();
-      if (operationName.equals("send")) {
+      if (operationName.equals(TracingKafkaUtils.TO_PREFIX + "messages")) {
         assertEquals(Tags.SPAN_KIND_PRODUCER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         assertEquals("messages", mockSpan.tags().get(Tags.MESSAGE_BUS_DESTINATION.getKey()));
-      } else if (operationName.equals("receive")) {
+      } else if (operationName.equals(TracingKafkaUtils.FROM_PREFIX + "messages")) {
         assertEquals(Tags.SPAN_KIND_CONSUMER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         assertEquals(0, mockSpan.tags().get("partition"));
         long offset = (Long) mockSpan.tags().get("offset");
@@ -262,8 +262,8 @@ public class TracingKafkaTest {
       }
       assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
-      assertTrue(operationName.equals("send")
-          || operationName.equals("receive"));
+      assertTrue(operationName.equals(TracingKafkaUtils.TO_PREFIX + "messages")
+          || operationName.equals(TracingKafkaUtils.FROM_PREFIX + "messages"));
     }
   }
 

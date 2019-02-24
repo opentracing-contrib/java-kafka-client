@@ -13,7 +13,6 @@
  */
 package io.opentracing.contrib.kafka;
 
-
 import io.opentracing.References;
 import io.opentracing.Scope;
 import io.opentracing.Span;
@@ -30,7 +29,10 @@ import org.slf4j.LoggerFactory;
 import java.util.function.BiFunction;
 
 public class TracingKafkaUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
+  public static final String TO_PREFIX = "To_";
+  public static final String FROM_PREFIX = "From_";
 
   /**
    * Extract Span Context from record headers
@@ -84,7 +86,9 @@ public class TracingKafkaUtils {
 
   static <K,V> Scope buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
                                         BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
-    Tracer.SpanBuilder spanBuilder = tracer.buildSpan(producerSpanNameProvider.apply("send", record))
+
+    String producerOper = TO_PREFIX + record.topic(); // <======== It provides better readability in the UI
+    Tracer.SpanBuilder spanBuilder = tracer.buildSpan(producerSpanNameProvider.apply(producerOper, record))
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
 
     SpanContext spanContext = TracingKafkaUtils.extract(record.headers(), tracer);
@@ -116,7 +120,8 @@ public class TracingKafkaUtils {
 
     if (parentContext != null) {
 
-      Tracer.SpanBuilder spanBuilder = tracer.buildSpan(consumerSpanNameProvider.apply("receive", record))
+      String consumerOper = FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
+      Tracer.SpanBuilder spanBuilder = tracer.buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
 
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
@@ -129,4 +134,5 @@ public class TracingKafkaUtils {
       TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
     }
   }
+
 }
