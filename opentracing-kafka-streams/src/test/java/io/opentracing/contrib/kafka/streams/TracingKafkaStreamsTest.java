@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import io.opentracing.contrib.kafka.TracingKafkaProducer;
+import io.opentracing.contrib.kafka.TracingKafkaUtils;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
@@ -107,11 +108,11 @@ public class TracingKafkaStreamsTest {
   private void checkSpans(List<MockSpan> mockSpans) {
     for (MockSpan mockSpan : mockSpans) {
       String operationName = mockSpan.operationName();
-      if (operationName.equals("send")) {
+      if (operationName.equals(TracingKafkaUtils.TO_PREFIX + "stream-test")) {
         assertEquals(Tags.SPAN_KIND_PRODUCER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         String topicName = (String) mockSpan.tags().get(Tags.MESSAGE_BUS_DESTINATION.getKey());
         assertTrue(topicName.equals("stream-out") || topicName.equals("stream-test"));
-      } else if (operationName.equals("receive")) {
+      } else if (operationName.equals(TracingKafkaUtils.FROM_PREFIX + "stream-test")) {
         assertEquals(Tags.SPAN_KIND_CONSUMER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         assertEquals(0, mockSpan.tags().get("partition"));
         long offset = (Long) mockSpan.tags().get("offset");
@@ -121,8 +122,10 @@ public class TracingKafkaStreamsTest {
       }
       assertEquals("java-kafka", mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
-      assertTrue(operationName.equals("send")
-          || operationName.equals("receive"));
+      assertTrue(operationName.equals(TracingKafkaUtils.TO_PREFIX + "stream-test")
+          || operationName.equals(TracingKafkaUtils.FROM_PREFIX + "stream-test")
+          || operationName.equals(TracingKafkaUtils.FROM_PREFIX + "stream-out")
+          || operationName.equals(TracingKafkaUtils.TO_PREFIX + "stream-out"));
     }
   }
 
