@@ -16,7 +16,6 @@ package io.opentracing.contrib.kafka;
 import io.jaegertracing.Configuration;
 import io.jaegertracing.Configuration.ReporterConfiguration;
 import io.jaegertracing.Configuration.SamplerConfiguration;
-import io.jaegertracing.internal.JaegerTracer;
 import io.opentracing.References;
 import io.opentracing.Scope;
 import io.opentracing.Span;
@@ -161,7 +160,7 @@ public class TracingKafkaUtils {
    * interceptors configuration file. Each service defined in the file
    * must has its own tracer.
    */
-  private static JaegerTracer createTracer(Service service) {
+  private static Tracer createTracer(Service service) {
 
     SamplerConfiguration samplerConfig = SamplerConfiguration.fromEnv()
       .withType(service.getTraceConfig().getSamplerType())
@@ -175,6 +174,10 @@ public class TracingKafkaUtils {
       .withReporter(reporterConfig);
     
     return config.getTracer();
+
+    // Currently creating a Jaeger tracer but it would be nice if this
+    // method could create different type of tracers depending of some
+    // parameter set in the interceptors configuration file.
 
   }
 
