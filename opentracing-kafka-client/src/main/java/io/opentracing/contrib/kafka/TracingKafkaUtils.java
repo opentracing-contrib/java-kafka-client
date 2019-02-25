@@ -13,6 +13,10 @@
  */
 package io.opentracing.contrib.kafka;
 
+import io.jaegertracing.Configuration;
+import io.jaegertracing.Configuration.ReporterConfiguration;
+import io.jaegertracing.Configuration.SamplerConfiguration;
+import io.jaegertracing.internal.JaegerTracer;
 import io.opentracing.References;
 import io.opentracing.Scope;
 import io.opentracing.Span;
@@ -26,11 +30,22 @@ import org.apache.kafka.common.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileReader;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiFunction;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class TracingKafkaUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
+
+  public static final String CONFIG_FILE_PROP = "opentracing.kafka.interceptors.config.file";
   public static final String TO_PREFIX = "To_";
   public static final String FROM_PREFIX = "From_";
 
@@ -124,6 +139,7 @@ public class TracingKafkaUtils {
       Tracer.SpanBuilder spanBuilder = tracer.buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
 
+      spanBuilder.asChildOf(parentContext);
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
 
       Span span = spanBuilder.start();
@@ -133,6 +149,64 @@ public class TracingKafkaUtils {
       // Inject created span context into record headers for extraction by client to continue span chain
       TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
     }
+  }
+
+  private static JaegerTracer createTracer(String serviceName) {
+
+    SamplerConfiguration samplerConfig = SamplerConfiguration.fromEnv().withType("const").withParam(1);
+    ReporterConfiguration reporterConfig = ReporterConfiguration.fromEnv().withLogSpans(true);
+    Configuration config = new Configuration(serviceName).withSampler(samplerConfig).withReporter(reporterConfig);
+    
+    return config.getTracer();
+
+  }
+
+  public static Map<String, Tracer> buildTracerMapping(String configFileName) {
+
+    Map<String, Tracer> mapping = null;
+    File file = new File(configFileName);
+
+    if (file.exists()) {
+
+      mapping = new HashMap<String, Tracer>();
+
+      try (FileReader reader = new FileReader(file)) {
+
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(reader);
+        JsonObject root = element.getAsJsonObject();
+        JsonArray services = root.getAsJsonArray("services");
+
+        for (int i = 0; i < services.size(); i++) {
+
+          JsonObject service = services.get(i).getAsJsonObject();
+          String serviceName = service.get("service").getAsString();
+          Tracer tracer = createTracer(serviceName);
+
+          JsonArray topics = service.getAsJsonArray("topics");
+          for (int j = 0; j < topics.size(); j++) {
+
+            String topic = topics.get(j).getAsString();
+            mapping.put(topic, tracer);
+
+          }
+
+        }
+
+      } catch (Exception ex) {
+
+        throw new RuntimeException("Error building the tracer mapping", ex);
+
+      }
+
+    } else {
+
+      throw new RuntimeException("The file '" + configFileName + "' does not exist.");
+
+    }
+
+    return mapping;
+
   }
 
 }
