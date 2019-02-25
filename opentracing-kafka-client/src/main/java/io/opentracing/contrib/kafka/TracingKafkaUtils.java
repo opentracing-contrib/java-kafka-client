@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 The OpenTracing Authors
+ * Copyright 2017-2019 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,6 +48,8 @@ import com.google.gson.JsonParser;
 public class TracingKafkaUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
+  public static final String TO_PREFIX = "To_";
+  public static final String FROM_PREFIX = "From_";
 
   public static final String CONFIG_FILE_PROP = "opentracing.kafka.interceptors.config.file";
   public static final String TO_PREFIX = "To_";
