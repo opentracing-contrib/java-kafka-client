@@ -48,8 +48,6 @@ import com.google.gson.JsonParser;
 public class TracingKafkaUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
-  public static final String TO_PREFIX = "To_";
-  public static final String FROM_PREFIX = "From_";
 
   public static final String CONFIG_FILE_PROP = "opentracing.kafka.interceptors.config.file";
   public static final String TO_PREFIX = "To_";
