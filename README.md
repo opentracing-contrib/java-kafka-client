@@ -261,7 +261,7 @@ The interceptors `TracingProducerInterceptor` and `TracingConsumerInterceptor` a
 
 Typical examples include the use of [REST Proxy](https://docs.confluent.io/current/kafka-rest/docs/index.html), [Kafka Connect](https://docs.confluent.io/current/connect/index.html), and [Confluent's KSQL Servers](https://docs.confluent.io/current/ksql/docs/index.html). In this technologies, the JVMs are automatically created by pre-defined scripts and you would need a special type of interceptor, one that can instantiate their own tracers based on configuration specified in an external file. For this particular situation, you can use the `TracingProducerEmbeddedInterceptor` and `TracingConsumerEmbeddedInterceptor` interceptors.
 
-For example, if you want to use these interceptors with a REST Proxy Server, you you need to edit the properties configuration file used to start the server and include the following lines:
+For example, if you want to use these interceptors with a REST Proxy Server, you need to edit the properties configuration file used to start the server and include the following lines:
 
 ```java
 id=my-rest-proxy-server
