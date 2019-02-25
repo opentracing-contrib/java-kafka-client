@@ -24,6 +24,7 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
@@ -31,8 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
@@ -151,17 +156,41 @@ public class TracingKafkaUtils {
     }
   }
 
-  private static JaegerTracer createTracer(String serviceName) {
+  /**
+   * Utility method to create tracers for the services defined in the
+   * interceptors configuration file. Each service defined in the file
+   * must has its own tracer.
+   */
+  private static JaegerTracer createTracer(Service service) {
 
-    SamplerConfiguration samplerConfig = SamplerConfiguration.fromEnv().withType("const").withParam(1);
-    ReporterConfiguration reporterConfig = ReporterConfiguration.fromEnv().withLogSpans(true);
-    Configuration config = new Configuration(serviceName).withSampler(samplerConfig).withReporter(reporterConfig);
+    SamplerConfiguration samplerConfig = SamplerConfiguration.fromEnv()
+      .withType(service.getTraceConfig().getSamplerType())
+      .withParam(service.getTraceConfig().getSamplerParam());
+
+    ReporterConfiguration reporterConfig = ReporterConfiguration.fromEnv()
+      .withLogSpans(service.getTraceConfig().isLogSpans());
+
+    Configuration config = new Configuration(service.getServiceName())
+      .withSampler(samplerConfig)
+      .withReporter(reporterConfig);
     
     return config.getTracer();
 
   }
 
-  public static Map<String, Tracer> buildTracerMapping(String configFileName) {
+  /**
+   * Builds a mapping between topics and tracers, so the interceptors knows
+   * which tracer to use given a topic. This mapping is important because it
+   * provides a way to cache tracers and we can avoid the time spent during
+   * tracer instantiation. Also, it is important to provide a rapid way to
+   * retrieve a tracer given the topic name, preferably using a O(1) retrieval
+   * method such as a Hashtable.
+   * 
+   * @param configFileName Configuration file specified as a property
+   * 
+   */
+  public static Map<String, Tracer> buildTracerMapping(String configFileName)
+    throws FileNotFoundException, IOException {
 
     Map<String, Tracer> mapping = null;
     File file = new File(configFileName);
@@ -169,43 +198,213 @@ public class TracingKafkaUtils {
     if (file.exists()) {
 
       mapping = new HashMap<String, Tracer>();
+      List<Service> services = loadServices(file);
 
-      try (FileReader reader = new FileReader(file)) {
+      for (Service service : services) {
 
-        JsonParser parser = new JsonParser();
-        JsonElement element = parser.parse(reader);
-        JsonObject root = element.getAsJsonObject();
-        JsonArray services = root.getAsJsonArray("services");
+        Tracer tracer = createTracer(service);
 
-        for (int i = 0; i < services.size(); i++) {
-
-          JsonObject service = services.get(i).getAsJsonObject();
-          String serviceName = service.get("service").getAsString();
-          Tracer tracer = createTracer(serviceName);
-
-          JsonArray topics = service.getAsJsonArray("topics");
-          for (int j = 0; j < topics.size(); j++) {
-
-            String topic = topics.get(j).getAsString();
-            mapping.put(topic, tracer);
-
-          }
-
+        for (String topic : service.getTopics()) {
+          mapping.put(topic, tracer);
         }
-
-      } catch (Exception ex) {
-
-        throw new RuntimeException("Error building the tracer mapping", ex);
 
       }
 
     } else {
 
-      throw new RuntimeException("The file '" + configFileName + "' does not exist.");
+      throw new FileNotFoundException("The file '" + configFileName + "' does not exist.");
 
     }
 
     return mapping;
+
+  }
+
+  /**
+   * Load the services from the interceptors configuration file. This file
+   * has an single attribute called 'services' of type array, and this array
+   * has AT LEAST ONE or multiple services within. Each service MUST have
+   * a name and OPTIONAL attributes for 'traceConfig' and 'topics'.
+   * 
+   * Here is an example of two services defines, each one with their own
+   * tracer configuration and topics definition.
+   * 
+   * {
+   * 
+   *   "services" : [
+   * 
+   *      {
+   
+             "service" : "Service-1",
+             "traceConfig" : {
+                "samplerType" : "const",
+                "samplerParam" : 1,
+                "logSpans" : true
+             },
+             "topics" : ["Topic-1", "Topic-2", Topic-3]
+   * 
+   *      },
+   *      {
+   
+             "service" : "Service-2",
+             "traceConfig" : {
+                "samplerType" : "probabilistic",
+                "samplerParam" : 0.8,
+                "logSpans" : false
+             },
+             "topics" : ["Topic-4", "Topic-5", Topic-6]
+   * 
+   *      }
+   * 
+   *   ]
+   * 
+   * }
+   * 
+   * It is important to note that the topics defined in this file
+   * will be used as keys to retrieve the correspondent tracer,
+   * which in turn is created per service. Therefore, a topic
+   * should not belong to two different services at the same
+   * time, otherwise there will be collapses and undesirable
+   * tracing behavior.
+   * 
+   */
+  private static List<Service> loadServices(File file)
+    throws FileNotFoundException, IOException {
+
+    List<Service> services = new ArrayList<Service>();
+
+    try (FileReader reader = new FileReader(file)) {
+
+      JsonParser parser = new JsonParser();
+      JsonElement element = parser.parse(reader);
+      JsonObject root = element.getAsJsonObject();
+      JsonArray svcs = root.getAsJsonArray("services");
+
+      for (int i = 0; i < svcs.size(); i++) {
+
+        JsonObject svc = svcs.get(i).getAsJsonObject();
+
+        String serviceName = svc.get("service").getAsString();
+        JsonObject trCnf = svc.getAsJsonObject("traceConfig");
+        JsonArray topicsArray = svc.getAsJsonArray("topics");
+        TraceConfig traceConfig = getTraceConfig(trCnf);
+        List<String> topics = getTopics(topicsArray);
+
+        services.add(new Service(serviceName, traceConfig, topics));
+
+      }
+
+    }
+
+    return services;
+
+  }
+
+  private static TraceConfig getTraceConfig(JsonObject trCnf) {
+
+    if (trCnf == null) {
+
+      // If none provided, create a default one...
+      return new TraceConfig("const", 1, true);
+
+    }
+
+    JsonElement ele = trCnf.get("samplerType");
+    String samplerType = ele != null ? ele.getAsString() : "const";
+
+    ele = trCnf.get("samplerParam");
+    double samplerParam = ele != null ? ele.getAsDouble() : 1;
+
+    ele = trCnf.get("logSpans");
+    boolean logSpans = ele != null ? ele.getAsBoolean() : true;
+
+    return new TraceConfig(samplerType, samplerParam, logSpans);
+
+  }
+
+  private static List<String> getTopics(JsonArray topicsArray) {
+
+    List<String> topics = new ArrayList<String>();
+
+    if (topicsArray != null) {
+
+      for (int i = 0; i < topicsArray.size(); i++) {
+        topics.add(topicsArray.get(i).getAsString());
+      }
+
+    }
+
+    return topics;
+
+  }
+
+  private static class Service {
+
+    private String serviceName;
+    private TraceConfig traceConfig;
+    private List<String> topics;
+
+    public Service(String serviceName,
+      TraceConfig traceConfig, List<String> topics) {
+
+        this.serviceName = serviceName;
+        this.traceConfig = traceConfig;
+        this.topics = topics;
+
+    }
+
+    public String getServiceName() {
+
+      return this.serviceName;
+
+    }
+
+    public TraceConfig getTraceConfig() {
+
+      return this.traceConfig;
+
+    }
+
+    public List<String> getTopics() {
+
+      return this.topics;
+
+    }
+
+  }
+
+  private static class TraceConfig {
+
+    private String samplerType;
+    private double samplerParam;
+    private boolean logSpans;
+
+    public TraceConfig(String samplerType,
+      double samplerParam, boolean logSpans) {
+
+        this.samplerType = samplerType;
+        this.samplerParam = samplerParam;
+        this.logSpans = logSpans;
+      
+    }
+
+    public String getSamplerType() {
+
+      return this.samplerType;
+
+    }
+
+    public double getSamplerParam() {
+
+      return this.samplerParam;
+
+    }
+
+    public boolean isLogSpans() {
+
+      return this.logSpans;
+
+    }
 
   }
 

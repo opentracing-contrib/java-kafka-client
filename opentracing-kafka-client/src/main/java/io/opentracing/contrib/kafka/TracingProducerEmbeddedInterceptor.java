@@ -15,6 +15,8 @@ package io.opentracing.contrib.kafka;
 
 import io.opentracing.Scope;
 import io.opentracing.Tracer;
+
+import java.io.IOException;
 import java.util.Map;
 
 import org.apache.kafka.clients.producer.ProducerInterceptor;
@@ -28,13 +30,15 @@ public class TracingProducerEmbeddedInterceptor<K, V> implements ProducerInterce
   @Override
   public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
 
-    Tracer tracer = tracerMapping.get(record.topic());
+    if (tracerMapping != null) {
 
-    if (tracer != null) {
+      Tracer tracer = tracerMapping.get(record.topic());
 
-      try (Scope scope = TracingKafkaUtils.buildAndInjectSpan(record, tracer)) {
-
-        scope.span().finish();
+      if (tracer != null) {
+  
+        try (Scope scope = TracingKafkaUtils.buildAndInjectSpan(record, tracer)) {
+          scope.span().finish();
+        }
   
       }
 
@@ -59,7 +63,12 @@ public class TracingProducerEmbeddedInterceptor<K, V> implements ProducerInterce
     if (configs.containsKey(TracingKafkaUtils.CONFIG_FILE_PROP)) {
 
       String configFileName = (String) configs.get(TracingKafkaUtils.CONFIG_FILE_PROP);
-      tracerMapping = TracingKafkaUtils.buildTracerMapping(configFileName);
+
+      try {
+        tracerMapping = TracingKafkaUtils.buildTracerMapping(configFileName);
+      } catch (IOException ioe) {
+        ioe.printStackTrace();
+      }
  
     }
 

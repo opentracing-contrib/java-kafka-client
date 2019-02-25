@@ -14,6 +14,8 @@
 package io.opentracing.contrib.kafka;
 
 import io.opentracing.Tracer;
+
+import java.io.IOException;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerInterceptor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -28,16 +30,18 @@ public class TracingConsumerEmbeddedInterceptor<K, V> implements ConsumerInterce
   @Override
   public ConsumerRecords<K, V> onConsume(ConsumerRecords<K, V> records) {
 
-    Tracer tracer = null;
+    if (tracerMapping != null) {
 
-    for (ConsumerRecord<K, V> record : records) {
+      Tracer tracer = null;
 
-      tracer = tracerMapping.get(record.topic());
-
-      if (tracer != null) {
-
-        TracingKafkaUtils.buildAndFinishChildSpan(record, tracer);
-
+      for (ConsumerRecord<K, V> record : records) {
+  
+        tracer = tracerMapping.get(record.topic());
+  
+        if (tracer != null) {
+          TracingKafkaUtils.buildAndFinishChildSpan(record, tracer);
+        }
+  
       }
 
     }
@@ -62,7 +66,12 @@ public class TracingConsumerEmbeddedInterceptor<K, V> implements ConsumerInterce
     if (configs.containsKey(TracingKafkaUtils.CONFIG_FILE_PROP)) {
 
       String configFileName = (String) configs.get(TracingKafkaUtils.CONFIG_FILE_PROP);
-      tracerMapping = TracingKafkaUtils.buildTracerMapping(configFileName);
+
+      try {
+        tracerMapping = TracingKafkaUtils.buildTracerMapping(configFileName);
+      } catch (IOException ioe) {
+        ioe.printStackTrace();
+      }
  
     }
 
