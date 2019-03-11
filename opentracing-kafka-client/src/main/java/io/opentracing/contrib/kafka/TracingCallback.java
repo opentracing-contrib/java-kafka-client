@@ -28,7 +28,7 @@ public class TracingCallback implements Callback {
   private final Span span;
   private final Tracer tracer;
 
-  TracingCallback(Callback callback, Span span, Tracer tracer) {
+  public TracingCallback(Callback callback, Span span, Tracer tracer) {
     this.callback = callback;
     this.span = span;
     this.tracer = tracer;
