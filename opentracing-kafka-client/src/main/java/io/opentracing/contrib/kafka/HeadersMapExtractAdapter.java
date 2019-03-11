@@ -27,7 +27,7 @@ public class HeadersMapExtractAdapter implements TextMap {
 
   private final Map<String, String> map = new HashMap<>();
 
-  HeadersMapExtractAdapter(Headers headers, boolean second) {
+  public HeadersMapExtractAdapter(Headers headers, boolean second) {
     for (Header header : headers) {
       if (second) {
         if (header.key().startsWith("second_span_")) {
