@@ -79,9 +79,11 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
   }
 
   @Override
-  public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix) {
-    return new TracingKafkaConsumer<>(consumerFactory.createConsumer(groupId, clientIdPrefix, clientIdSuffix),
-            tracer, consumerSpanNameProvider);
+  public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix,
+      String clientIdSuffix) {
+    return new TracingKafkaConsumer<>(
+        consumerFactory.createConsumer(groupId, clientIdPrefix, clientIdSuffix),
+        tracer, consumerSpanNameProvider);
   }
 
   @Override

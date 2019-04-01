@@ -18,10 +18,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
-import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,8 +29,7 @@ import org.junit.Test;
 
 public class TracingCallbackTest {
 
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
-      MockTracer.Propagator.TEXT_MAP);
+  private MockTracer mockTracer = new MockTracer();
 
   @Before
   public void before() {
@@ -39,8 +38,9 @@ public class TracingCallbackTest {
 
   @Test
   public void onCompletionWithError() {
-    try (Scope scope = mockTracer.buildSpan("test").startActive(false)) {
-      TracingCallback callback = new TracingCallback(null, scope.span(), mockTracer);
+    Span span = mockTracer.buildSpan("test").start();
+    try (Scope ignored = mockTracer.activateSpan(span)) {
+      TracingCallback callback = new TracingCallback(null, span, mockTracer);
       callback.onCompletion(null, new RuntimeException("test"));
     }
 
@@ -52,8 +52,9 @@ public class TracingCallbackTest {
 
   @Test
   public void onCompletion() {
-    try (Scope scope = mockTracer.buildSpan("test").startActive(false)) {
-      TracingCallback callback = new TracingCallback(null, scope.span(), mockTracer);
+    Span span = mockTracer.buildSpan("test").start();
+    try (Scope ignored = mockTracer.activateSpan(span)) {
+      TracingCallback callback = new TracingCallback(null, span, mockTracer);
       callback.onCompletion(null, null);
     }
 

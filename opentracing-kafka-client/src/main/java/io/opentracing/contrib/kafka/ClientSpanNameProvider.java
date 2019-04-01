@@ -14,15 +14,13 @@
 
 package io.opentracing.contrib.kafka;
 
+import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
-import java.util.function.BiFunction;
-
 /**
- * @author Jordan J Lopez
- *  Returns a string to be used as the name of the spans, based on
- *  the operation preformed and the record the span is based off of.
+ * @author Jordan J Lopez Returns a string to be used as the name of the spans, based on the
+ * operation preformed and the record the span is based off of.
  */
 public class ClientSpanNameProvider {
 
@@ -32,11 +30,14 @@ public class ClientSpanNameProvider {
   public static BiFunction<String, ProducerRecord, String> PRODUCER_OPERATION_NAME =
       (operationName, producerRecord) -> replaceIfNull(operationName, "unknown");
 
-  public static BiFunction<String, ConsumerRecord, String> CONSUMER_PREFIXED_OPERATION_NAME(final String prefix) {
+  public static BiFunction<String, ConsumerRecord, String> CONSUMER_PREFIXED_OPERATION_NAME(
+      final String prefix) {
     return (operationName, consumerRecord) -> replaceIfNull(prefix, "")
         + replaceIfNull(operationName, "unknown");
   }
-  public static BiFunction<String, ProducerRecord, String> PRODUCER_PREFIXED_OPERATION_NAME(final String prefix) {
+
+  public static BiFunction<String, ProducerRecord, String> PRODUCER_PREFIXED_OPERATION_NAME(
+      final String prefix) {
     return (operationName, producerRecord) -> replaceIfNull(prefix, "")
         + replaceIfNull(operationName, "unknown");
   }
@@ -47,11 +48,14 @@ public class ClientSpanNameProvider {
   public static BiFunction<String, ProducerRecord, String> PRODUCER_TOPIC =
       (operationName, producerRecord) -> replaceIfNull(producerRecord, "unknown");
 
-  public static BiFunction<String, ConsumerRecord, String> CONSUMER_PREFIXED_TOPIC(final String prefix) {
+  public static BiFunction<String, ConsumerRecord, String> CONSUMER_PREFIXED_TOPIC(
+      final String prefix) {
     return (operationName, consumerRecord) -> replaceIfNull(prefix, "")
         + replaceIfNull(consumerRecord, "unknown");
   }
-  public static BiFunction<String, ProducerRecord, String> PRODUCER_PREFIXED_TOPIC(final String prefix) {
+
+  public static BiFunction<String, ProducerRecord, String> PRODUCER_PREFIXED_TOPIC(
+      final String prefix) {
     return (operationName, producerRecord) -> replaceIfNull(prefix, "")
         + replaceIfNull(producerRecord, "unknown");
   }
@@ -59,17 +63,20 @@ public class ClientSpanNameProvider {
   // Operation Name and Topic as Span Name
   public static BiFunction<String, ConsumerRecord, String> CONSUMER_OPERATION_NAME_TOPIC =
       (operationName, consumerRecord) -> replaceIfNull(operationName, "unknown")
-      + " - " + replaceIfNull(consumerRecord, "unknown");
+          + " - " + replaceIfNull(consumerRecord, "unknown");
   public static BiFunction<String, ProducerRecord, String> PRODUCER_OPERATION_NAME_TOPIC =
       (operationName, producerRecord) -> replaceIfNull(operationName, "unknown")
-      + " - " + replaceIfNull(producerRecord, "unknown");
+          + " - " + replaceIfNull(producerRecord, "unknown");
 
-  public static BiFunction<String, ConsumerRecord, String> CONSUMER_PREFIXED_OPERATION_NAME_TOPIC(final String prefix) {
+  public static BiFunction<String, ConsumerRecord, String> CONSUMER_PREFIXED_OPERATION_NAME_TOPIC(
+      final String prefix) {
     return (operationName, consumerRecord) -> replaceIfNull(prefix, "")
         + replaceIfNull(operationName, "unknown")
         + " - " + replaceIfNull(consumerRecord, "unknown");
   }
-  public static BiFunction<String, ProducerRecord, String> PRODUCER_PREFIXED_OPERATION_NAME_TOPIC(final String prefix) {
+
+  public static BiFunction<String, ProducerRecord, String> PRODUCER_PREFIXED_OPERATION_NAME_TOPIC(
+      final String prefix) {
     return (operationName, producerRecord) -> replaceIfNull(prefix, "")
         + replaceIfNull(operationName, "unknown")
         + " - " + replaceIfNull(producerRecord, "unknown");

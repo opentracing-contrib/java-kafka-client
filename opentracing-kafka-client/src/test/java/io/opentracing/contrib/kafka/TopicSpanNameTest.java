@@ -14,18 +14,19 @@
 
 package io.opentracing.contrib.kafka;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.Test;
 
-import java.util.function.BiFunction;
-
-import static org.junit.Assert.assertEquals;
-
 public class TopicSpanNameTest {
 
-  private final ConsumerRecord<String, Integer> consumerRecord = new ConsumerRecord("example_topic", 0, 0, "KEY", 999);
-  private final ProducerRecord<String, Integer> producerRecord = new ProducerRecord("example_topic", 0, System.currentTimeMillis(), "KEY", 999);
+  private final ConsumerRecord<String, Integer> consumerRecord = new ConsumerRecord<>(
+      "example_topic", 0, 0, "KEY", 999);
+  private final ProducerRecord<String, Integer> producerRecord = new ProducerRecord<>(
+      "example_topic", 0, System.currentTimeMillis(), "KEY", 999);
   private BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider;
   private BiFunction<String, ProducerRecord, String> producerSpanNameProvider;
 
@@ -50,11 +51,15 @@ public class TopicSpanNameTest {
     consumerSpanNameProvider = ClientSpanNameProvider.CONSUMER_PREFIXED_TOPIC("KafkaClient: ");
     producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_PREFIXED_TOPIC("KafkaClient: ");
 
-    assertEquals("KafkaClient: example_topic", consumerSpanNameProvider.apply("receive", consumerRecord));
-    assertEquals("KafkaClient: example_topic", producerSpanNameProvider.apply("send", producerRecord));
+    assertEquals("KafkaClient: example_topic",
+        consumerSpanNameProvider.apply("receive", consumerRecord));
+    assertEquals("KafkaClient: example_topic",
+        producerSpanNameProvider.apply("send", producerRecord));
 
-    assertEquals("KafkaClient: example_topic", consumerSpanNameProvider.apply(null, consumerRecord));
-    assertEquals("KafkaClient: example_topic", producerSpanNameProvider.apply(null, producerRecord));
+    assertEquals("KafkaClient: example_topic",
+        consumerSpanNameProvider.apply(null, consumerRecord));
+    assertEquals("KafkaClient: example_topic",
+        producerSpanNameProvider.apply(null, producerRecord));
 
     assertEquals("KafkaClient: unknown", consumerSpanNameProvider.apply("receive", null));
     assertEquals("KafkaClient: unknown", producerSpanNameProvider.apply("send", null));

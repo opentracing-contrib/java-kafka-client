@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -37,7 +37,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 public class TracingSpringKafkaTest {
 
   @ClassRule
-  public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(2, true, 2, "spring");
+  public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(2, true, 2, "spring");
 
   @Autowired
   private MockTracer mockTracer;

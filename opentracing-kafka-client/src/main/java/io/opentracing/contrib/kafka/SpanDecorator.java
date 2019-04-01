@@ -70,8 +70,8 @@ class SpanDecorator {
     return errorLogs;
   }
 
-  private static void setCommonTags(Span span){
-      Tags.COMPONENT.set(span, COMPONENT_NAME);
-      Tags.PEER_SERVICE.set(span, KAFKA_SERVICE);
+  private static void setCommonTags(Span span) {
+    Tags.COMPONENT.set(span, COMPONENT_NAME);
+    Tags.PEER_SERVICE.set(span, KAFKA_SERVICE);
   }
 }

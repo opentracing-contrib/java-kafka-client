@@ -40,10 +40,12 @@ public class TracingCallback implements Callback {
       SpanDecorator.onError(exception, span);
     }
 
-    try (Scope ignored = tracer.scopeManager().activate(span, true)) {
+    try (Scope ignored = tracer.scopeManager().activate(span)) {
       if (callback != null) {
         callback.onCompletion(metadata, exception);
       }
+    } finally {
+      span.finish();
     }
   }
 }

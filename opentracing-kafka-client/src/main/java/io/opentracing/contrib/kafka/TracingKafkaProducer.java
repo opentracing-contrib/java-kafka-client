@@ -15,6 +15,7 @@ package io.opentracing.contrib.kafka;
 
 
 import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
 import java.util.List;
@@ -112,9 +113,9 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
         record.headers());
     */
 
-    try (Scope scope = TracingKafkaUtils
-        .buildAndInjectSpan(record, tracer, producerSpanNameProvider)) {
-      Callback wrappedCallback = new TracingCallback(callback, scope.span(), tracer);
+    Span span = TracingKafkaUtils.buildAndInjectSpan(record, tracer, producerSpanNameProvider);
+    try (Scope ignored = tracer.activateSpan(span)) {
+      Callback wrappedCallback = new TracingCallback(callback, span, tracer);
       return producer.send(record, wrappedCallback);
     }
   }

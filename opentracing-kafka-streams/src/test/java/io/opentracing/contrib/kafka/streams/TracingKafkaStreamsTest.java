@@ -24,7 +24,6 @@ import io.opentracing.contrib.kafka.TracingKafkaUtils;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
-import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -44,16 +43,15 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 public class TracingKafkaStreamsTest {
 
   @ClassRule
-  public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(2, true, 2, "stream-test");
+  public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(2, true, 2, "stream-test");
 
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
-      MockTracer.Propagator.TEXT_MAP);
+  private MockTracer mockTracer = new MockTracer();
 
   @Before
   public void before() {
@@ -62,7 +60,8 @@ public class TracingKafkaStreamsTest {
 
   @Test
   public void test() {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
 
     Properties config = new Properties();
     config.put(StreamsConfig.APPLICATION_ID_CONFIG, "stream-app");
@@ -100,7 +99,8 @@ public class TracingKafkaStreamsTest {
   }
 
   private Producer<Integer, String> createProducer() {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
     KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
     return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
   }

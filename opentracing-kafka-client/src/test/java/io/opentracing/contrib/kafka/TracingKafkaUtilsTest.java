@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockSpan.MockContext;
 import io.opentracing.mock.MockTracer;
-import io.opentracing.util.ThreadLocalScopeManager;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Before;
@@ -31,8 +30,7 @@ import org.junit.Test;
 
 public class TracingKafkaUtilsTest {
 
-  private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
-      MockTracer.Propagator.TEXT_MAP);
+  private MockTracer mockTracer = new MockTracer();
 
   @Before
   public void before() {

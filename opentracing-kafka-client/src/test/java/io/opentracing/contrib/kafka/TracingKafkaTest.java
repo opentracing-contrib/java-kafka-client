@@ -25,7 +25,7 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
-import io.opentracing.util.ThreadLocalScopeManager;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +35,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -49,19 +48,18 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 public class TracingKafkaTest {
 
   @ClassRule
-  public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(2, true, 2, "messages");
-  private static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
-      MockTracer.Propagator.TEXT_MAP);
+  public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(2, true, 2, "messages");
+  private static final MockTracer mockTracer = new MockTracer();
 
   @BeforeClass
   public static void init() {
-    GlobalTracer.register(mockTracer);
+    GlobalTracer.registerIfAbsent(mockTracer);
   }
 
   @Before
@@ -71,7 +69,8 @@ public class TracingKafkaTest {
 
   @Test
   public void with_interceptors() throws Exception {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
     senderProps
         .put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, TracingProducerInterceptor.class.getName());
     KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
@@ -113,14 +112,15 @@ public class TracingKafkaTest {
 
   @Test
   public void testWithTopicNameProvider() throws Exception {
-    Producer<Integer, String> producer = createNameProvidedProducer(ClientSpanNameProvider.PRODUCER_TOPIC);
+    Producer<Integer, String> producer = createNameProvidedProducer(
+        ClientSpanNameProvider.PRODUCER_TOPIC);
 
     // Send 1
     producer.send(new ProducerRecord<>("messages", 1, "test"));
 
     // Send 2
     producer.send(new ProducerRecord<>("messages", 1, "test"),
-            (metadata, exception) -> assertEquals("messages", metadata.topic()));
+        (metadata, exception) -> assertEquals("messages", metadata.topic()));
 
     final CountDownLatch latch = new CountDownLatch(2);
     createConsumer(latch, 1, false, ClientSpanNameProvider.CONSUMER_TOPIC);
@@ -132,7 +132,8 @@ public class TracingKafkaTest {
       String operationName = mockSpan.operationName();
       assertEquals("messages", operationName);
       String spanKind = (String) mockSpan.tags().get(Tags.SPAN_KIND.getKey());
-      assertTrue(spanKind.equals(Tags.SPAN_KIND_CONSUMER) || spanKind.equals(Tags.SPAN_KIND_PRODUCER));
+      assertTrue(
+          spanKind.equals(Tags.SPAN_KIND_CONSUMER) || spanKind.equals(Tags.SPAN_KIND_PRODUCER));
     }
     assertNull(mockTracer.activeSpan());
   }
@@ -163,7 +164,8 @@ public class TracingKafkaTest {
     MockSpan sendSpan = getByOperationName(mockSpans, TracingKafkaUtils.TO_PREFIX + "messages");
     assertNotNull(sendSpan);
 
-    MockSpan receiveSpan = getByOperationName(mockSpans, TracingKafkaUtils.FROM_PREFIX + "messages");
+    MockSpan receiveSpan = getByOperationName(mockSpans,
+        TracingKafkaUtils.FROM_PREFIX + "messages");
     assertNotNull(receiveSpan);
 
     assertEquals(sendSpan.context().spanId(), receiveSpan.parentId());
@@ -180,7 +182,7 @@ public class TracingKafkaTest {
     producer.send(record);
 
     final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka);
+        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
     consumerProps.put("auto.offset.reset", "earliest");
 
     final CountDownLatch latch = new CountDownLatch(1);
@@ -190,26 +192,29 @@ public class TracingKafkaTest {
   }
 
   private Producer<Integer, String> createProducer() {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
     KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
     return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
   }
 
-  private Producer<Integer, String> createNameProvidedProducer(BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
-    Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+  private Producer<Integer, String> createNameProvidedProducer(
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
     KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
     return new TracingKafkaProducer<>(kafkaProducer, mockTracer, producerSpanNameProvider);
   }
 
   private void createConsumer(final CountDownLatch latch, final Integer key,
-      final boolean withInterceptor, final BiFunction<String, ConsumerRecord, String> consumerNameProvider)
+      final boolean withInterceptor,
+      final BiFunction<String, ConsumerRecord, String> consumerNameProvider)
       throws InterruptedException {
-
 
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka);
+        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
     consumerProps.put("auto.offset.reset", "earliest");
     if (withInterceptor) {
       consumerProps.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
@@ -227,7 +232,7 @@ public class TracingKafkaTest {
       consumer.subscribe(Collections.singletonList("messages"));
 
       while (latch.getCount() > 0) {
-        ConsumerRecords<Integer, String> records = consumer.poll(100);
+        ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
         for (ConsumerRecord<Integer, String> record : records) {
           SpanContext spanContext = TracingKafkaUtils
               .extractSpanContext(record.headers(), mockTracer);

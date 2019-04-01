@@ -36,7 +36,8 @@ public class HeadersMapExtractAdapter implements TextMap {
         }
       } else {
         byte[] headerValue = header.value();
-        map.put(header.key(), headerValue == null ? null : new String(headerValue, StandardCharsets.UTF_8));
+        map.put(header.key(),
+            headerValue == null ? null : new String(headerValue, StandardCharsets.UTF_8));
       }
     }
   }

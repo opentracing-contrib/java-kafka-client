@@ -16,8 +16,6 @@ package io.opentracing.contrib.kafka.spring;
 import static io.opentracing.contrib.kafka.spring.TracingSpringKafkaTest.embeddedKafka;
 
 import io.opentracing.mock.MockTracer;
-import io.opentracing.mock.MockTracer.Propagator;
-import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -38,7 +36,7 @@ public class TestConfiguration {
 
   @Bean
   public MockTracer tracer() {
-    return new MockTracer(new ThreadLocalScopeManager(), Propagator.TEXT_MAP);
+    return new MockTracer();
   }
 
   @Bean
@@ -53,7 +51,7 @@ public class TestConfiguration {
   @Bean
   public ConsumerFactory<Integer, String> consumerFactory() {
     final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka);
+        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
     consumerProps.put("auto.offset.reset", "earliest");
 
     return new TracingConsumerFactory<>(new DefaultKafkaConsumerFactory<>(consumerProps), tracer());
@@ -63,7 +61,7 @@ public class TestConfiguration {
   @Bean
   public ProducerFactory<Integer, String> producerFactory() {
     return new TracingProducerFactory<>(new DefaultKafkaProducerFactory<>(
-        KafkaTestUtils.producerProps(embeddedKafka)), tracer());
+        KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka())), tracer());
   }
 
   @Bean

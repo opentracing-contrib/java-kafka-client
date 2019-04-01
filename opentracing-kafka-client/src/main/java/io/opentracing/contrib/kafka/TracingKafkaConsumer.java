@@ -114,6 +114,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  @Deprecated
   public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = consumer.poll(timeout);
 
@@ -286,6 +287,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  @Deprecated
   public void close(long l, TimeUnit timeUnit) {
     consumer.close(l, timeUnit);
   }

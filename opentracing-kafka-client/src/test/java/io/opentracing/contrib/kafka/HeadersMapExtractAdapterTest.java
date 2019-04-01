@@ -13,13 +13,14 @@
  */
 package io.opentracing.contrib.kafka;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+import java.util.Map.Entry;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
-
-import java.util.Map.Entry;
-
-import static org.junit.Assert.*;
 
 
 public class HeadersMapExtractAdapterTest {
@@ -28,7 +29,8 @@ public class HeadersMapExtractAdapterTest {
   public void verifyNullHeaderHandled() {
     Headers headers = new RecordHeaders();
     headers.add("test_null_header", null);
-    HeadersMapExtractAdapter headersMapExtractAdapter = new HeadersMapExtractAdapter(headers, false);
+    HeadersMapExtractAdapter headersMapExtractAdapter = new HeadersMapExtractAdapter(headers,
+        false);
     Entry<String, String> header = headersMapExtractAdapter.iterator().next();
     assertNotNull(header);
     assertEquals(header.getKey(), "test_null_header");
