@@ -118,23 +118,23 @@ public class TracingKafkaUtils {
       BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     SpanContext parentContext = TracingKafkaUtils.extract(record.headers(), tracer);
 
+    String consumerOper =
+        FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
+    Tracer.SpanBuilder spanBuilder = tracer
+        .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
+        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
+
+
     if (parentContext != null) {
-
-      String consumerOper =
-          FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
-      Tracer.SpanBuilder spanBuilder = tracer
-          .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
-          .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
-
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
-
-      Span span = spanBuilder.start();
-      SpanDecorator.onResponse(record, span);
-      span.finish();
-
-      // Inject created span context into record headers for extraction by client to continue span chain
-      TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
     }
+
+    Span span = spanBuilder.start();
+    SpanDecorator.onResponse(record, span);
+    span.finish();
+
+    // Inject created span context into record headers for extraction by client to continue span chain
+    TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
   }
 
 }
