@@ -90,7 +90,7 @@ public class TracingKafkaTest {
 
   @Test
   public void test() throws Exception {
-    Producer<Integer, String> producer = createProducer();
+    Producer<Integer, String> producer = createTracingProducer();
 
     // Send 1
     producer.send(new ProducerRecord<>("messages", 1, "test"));
@@ -106,6 +106,28 @@ public class TracingKafkaTest {
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(4, mockSpans.size());
+    checkSpans(mockSpans);
+    assertNull(mockTracer.activeSpan());
+  }
+
+  @Test
+  public void testNotTracedProducer() throws Exception {
+    Producer<Integer, String> producer = createProducer();
+
+    // Send 1
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    // Send 2
+    producer.send(new ProducerRecord<>("messages", 1, "test"),
+        (metadata, exception) -> assertEquals("messages", metadata.topic()));
+
+    final CountDownLatch latch = new CountDownLatch(2);
+    createConsumer(latch, 1, false, null);
+
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
     checkSpans(mockSpans);
     assertNull(mockTracer.activeSpan());
   }
@@ -140,7 +162,7 @@ public class TracingKafkaTest {
 
   @Test
   public void with_parent() throws Exception {
-    Producer<Integer, String> producer = createProducer();
+    Producer<Integer, String> producer = createTracingProducer();
 
     try (Scope ignored = mockTracer.buildSpan("parent").startActive(true)) {
       producer.send(new ProducerRecord<>("messages", 1, "test"));
@@ -176,7 +198,7 @@ public class TracingKafkaTest {
 
   @Test
   public void nullKey() throws Exception {
-    Producer<Integer, String> producer = createProducer();
+    Producer<Integer, String> producer = createTracingProducer();
 
     ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", "test");
     producer.send(record);
@@ -191,19 +213,19 @@ public class TracingKafkaTest {
     producer.close();
   }
 
+  private Producer<Integer, String> createTracingProducer() {
+    return new TracingKafkaProducer<>(createProducer(), mockTracer);
+  }
+
   private Producer<Integer, String> createProducer() {
     Map<String, Object> senderProps = KafkaTestUtils
         .producerProps(embeddedKafka.getEmbeddedKafka());
-    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
-    return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
+    return new KafkaProducer<>(senderProps);
   }
 
   private Producer<Integer, String> createNameProvidedProducer(
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
-    KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
-    return new TracingKafkaProducer<>(kafkaProducer, mockTracer, producerSpanNameProvider);
+    return new TracingKafkaProducer<>(createProducer(), mockTracer, producerSpanNameProvider);
   }
 
   private void createConsumer(final CountDownLatch latch, final Integer key,

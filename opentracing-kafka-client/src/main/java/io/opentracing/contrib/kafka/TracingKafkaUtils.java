@@ -124,7 +124,6 @@ public class TracingKafkaUtils {
         .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
 
-
     if (parentContext != null) {
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
     }
