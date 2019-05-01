@@ -18,6 +18,7 @@ import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
