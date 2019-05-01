@@ -67,7 +67,7 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.32.0</opentracing.version>
-    <kafka.version>2.0.1</kafka.version>
+    <kafka.version>2.2.0</kafka.version>
     <spring.kafka.version>2.2.4.RELEASE</spring.kafka.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.3</jacoco-maven-plugin.version>

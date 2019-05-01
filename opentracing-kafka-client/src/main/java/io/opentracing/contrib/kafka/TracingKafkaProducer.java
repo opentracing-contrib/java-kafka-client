@@ -18,6 +18,7 @@ import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -138,6 +139,11 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
   @Override
   public void close() {
     producer.close();
+  }
+
+  @Override
+  public void close(Duration duration) {
+    producer.close(duration);
   }
 
   @Override
