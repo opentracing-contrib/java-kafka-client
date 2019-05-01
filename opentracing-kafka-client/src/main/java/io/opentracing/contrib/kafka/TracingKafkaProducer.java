@@ -141,6 +141,11 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
   }
 
   @Override
+  public void close(Duration duration) {
+    consumer.close(duration);
+  }
+
+  @Override
   public void close(long timeout, TimeUnit timeUnit) {
     producer.close(timeout, timeUnit);
   }
