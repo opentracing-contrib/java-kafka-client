@@ -211,7 +211,7 @@ public class TracingKafkaTest {
     Producer<Integer, String> producer = createTracingProducer();
 
     // Send 1
-    producer.send(new ProducerRecord<>("messages", 1, "test"));
+    producer.send(new ProducerRecord<>("messages-for-seek", 1, "test"));
 
     producer.close(Duration.ofSeconds(40));
 
@@ -230,7 +230,7 @@ public class TracingKafkaTest {
 
       consumer = new TracingKafkaConsumer<>(kafkaConsumer, mockTracer, null);
 
-      TopicPartition tp = new TopicPartition("messages",0);
+      TopicPartition tp = new TopicPartition("messages-for-seek",0);
       consumer.assign(Arrays.asList(tp));
 
       consumer.seek(tp, new OffsetAndMetadata(0));
