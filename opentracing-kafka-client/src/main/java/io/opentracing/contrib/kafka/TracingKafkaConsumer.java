@@ -179,7 +179,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public void seek(TopicPartition partition, OffsetAndMetadata offsetAndMetadata) {
-    consumer.seek(partition,offsetAndMetadata);
+    consumer.seek(partition, offsetAndMetadata);
   }
 
   @Override

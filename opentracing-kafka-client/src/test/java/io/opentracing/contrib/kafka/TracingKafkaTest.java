@@ -14,12 +14,27 @@
 package io.opentracing.contrib.kafka;
 
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import io.opentracing.Scope;
 import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -37,19 +52,6 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-
-import static org.junit.Assert.*;
 
 public class TracingKafkaTest {
 
@@ -214,7 +216,7 @@ public class TracingKafkaTest {
   }
 
   @Test
-  public void testSeekInConsumerAndCloseInProducer()  throws InterruptedException{
+  public void testSeekInConsumerAndCloseInProducer() throws InterruptedException {
 
     Producer<Integer, String> producer = createTracingProducer();
 
@@ -229,7 +231,7 @@ public class TracingKafkaTest {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     final Map<String, Object> consumerProps = KafkaTestUtils
-            .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
+        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
     consumerProps.put("auto.offset.reset", "earliest");
 
     executorService.execute(() -> {
@@ -238,7 +240,7 @@ public class TracingKafkaTest {
 
       consumer = new TracingKafkaConsumer<>(kafkaConsumer, mockTracer, null);
 
-      TopicPartition tp = new TopicPartition("messages-for-seek",0);
+      TopicPartition tp = new TopicPartition("messages-for-seek", 0);
       consumer.assign(Collections.singletonList(tp));
 
       consumer.seek(tp, new OffsetAndMetadata(0));
@@ -247,7 +249,7 @@ public class TracingKafkaTest {
         ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
         for (ConsumerRecord<Integer, String> record : records) {
           SpanContext spanContext = TracingKafkaUtils
-                  .extractSpanContext(record.headers(), mockTracer);
+              .extractSpanContext(record.headers(), mockTracer);
           assertNotNull(spanContext);
           assertEquals("test", record.value());
           assertEquals(key, record.key());
