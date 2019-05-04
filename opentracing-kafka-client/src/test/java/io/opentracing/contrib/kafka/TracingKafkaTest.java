@@ -20,7 +20,12 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
-import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -34,7 +39,10 @@ import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -231,7 +239,7 @@ public class TracingKafkaTest {
       consumer = new TracingKafkaConsumer<>(kafkaConsumer, mockTracer, null);
 
       TopicPartition tp = new TopicPartition("messages-for-seek",0);
-      consumer.assign(Arrays.asList(tp));
+      consumer.assign(Collections.singletonList(tp));
 
       consumer.seek(tp, new OffsetAndMetadata(0));
 
@@ -242,9 +250,8 @@ public class TracingKafkaTest {
                   .extractSpanContext(record.headers(), mockTracer);
           assertNotNull(spanContext);
           assertEquals("test", record.value());
-          if (key != null) {
-            assertEquals(key, record.key());
-          }
+          assertEquals(key, record.key());
+
           consumer.commitSync();
           latch.countDown();
         }
