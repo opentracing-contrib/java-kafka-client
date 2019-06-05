@@ -27,18 +27,11 @@ public class HeadersMapExtractAdapter implements TextMap {
 
   private final Map<String, String> map = new HashMap<>();
 
-  public HeadersMapExtractAdapter(Headers headers, boolean second) {
+  public HeadersMapExtractAdapter(Headers headers) {
     for (Header header : headers) {
-      if (second) {
-        if (header.key().startsWith("second_span_")) {
-          map.put(header.key().replaceFirst("^second_span_", ""),
-              new String(header.value(), StandardCharsets.UTF_8));
-        }
-      } else {
-        byte[] headerValue = header.value();
-        map.put(header.key(),
-            headerValue == null ? null : new String(headerValue, StandardCharsets.UTF_8));
-      }
+      byte[] headerValue = header.value();
+      map.put(header.key(),
+          headerValue == null ? null : new String(headerValue, StandardCharsets.UTF_8));
     }
   }
 

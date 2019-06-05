@@ -29,8 +29,7 @@ public class HeadersMapExtractAdapterTest {
   public void verifyNullHeaderHandled() {
     Headers headers = new RecordHeaders();
     headers.add("test_null_header", null);
-    HeadersMapExtractAdapter headersMapExtractAdapter = new HeadersMapExtractAdapter(headers,
-        false);
+    HeadersMapExtractAdapter headersMapExtractAdapter = new HeadersMapExtractAdapter(headers);
     Entry<String, String> header = headersMapExtractAdapter.iterator().next();
     assertNotNull(header);
     assertEquals(header.getKey(), "test_null_header");
