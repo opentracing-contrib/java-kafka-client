@@ -38,20 +38,9 @@ public class TracingKafkaUtils {
    * @param headers record headers
    * @return span context
    */
-  static SpanContext extract(Headers headers, Tracer tracer) {
-    return tracer
-        .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers, false));
-  }
-
-  /**
-   * Extract Span Context from Consumer record headers
-   *
-   * @param headers Consumer record headers
-   * @return span context
-   */
   public static SpanContext extractSpanContext(Headers headers, Tracer tracer) {
     return tracer
-        .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers, true));
+        .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers));
   }
 
   /**
@@ -63,19 +52,7 @@ public class TracingKafkaUtils {
   static void inject(SpanContext spanContext, Headers headers,
       Tracer tracer) {
     tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
-        new HeadersMapInjectAdapter(headers, false));
-  }
-
-  /**
-   * Inject second Span Context to record headers
-   *
-   * @param spanContext Span Context
-   * @param headers record headers
-   */
-  static void injectSecond(SpanContext spanContext, Headers headers,
-      Tracer tracer) {
-    tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
-        new HeadersMapInjectAdapter(headers, true));
+        new HeadersMapInjectAdapter(headers));
   }
 
   public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
@@ -91,7 +68,7 @@ public class TracingKafkaUtils {
         .buildSpan(producerSpanNameProvider.apply(producerOper, record))
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
 
-    SpanContext spanContext = TracingKafkaUtils.extract(record.headers(), tracer);
+    SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
 
     if (spanContext != null) {
       spanBuilder.asChildOf(spanContext);
@@ -116,7 +93,7 @@ public class TracingKafkaUtils {
 
   public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
       BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
-    SpanContext parentContext = TracingKafkaUtils.extract(record.headers(), tracer);
+    SpanContext parentContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
 
     String consumerOper =
         FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
@@ -133,7 +110,7 @@ public class TracingKafkaUtils {
     span.finish();
 
     // Inject created span context into record headers for extraction by client to continue span chain
-    TracingKafkaUtils.injectSecond(span.context(), record.headers(), tracer);
+    TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
   }
 
 }
