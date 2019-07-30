@@ -171,7 +171,7 @@ SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(),
 ```java
 
 // Instantiate TracingKafkaClientSupplier
-KafkaClientSupplier supplier = TracingKafkaClientSupplier(tracer);
+KafkaClientSupplier supplier = new TracingKafkaClientSupplier(tracer);
 
 // Provide supplier to KafkaStreams
 KafkaStreams streams = new KafkaStreams(builder.build(), new StreamsConfig(config), supplier);
