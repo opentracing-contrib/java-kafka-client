@@ -14,7 +14,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.opentracing.contrib</groupId>
   <artifactId>opentracing-kafka-parent</artifactId>
@@ -66,11 +68,11 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
-    <opentracing.version>0.32.0</opentracing.version>
-    <kafka.version>2.2.0</kafka.version>
-    <spring.kafka.version>2.2.4.RELEASE</spring.kafka.version>
+    <opentracing.version>0.33.0</opentracing.version>
+    <kafka.version>2.3.0</kafka.version>
+    <spring.kafka.version>2.2.7.RELEASE</spring.kafka.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
-    <jacoco-maven-plugin.version>0.8.3</jacoco-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.4</jacoco-maven-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -168,7 +170,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.0</version>
+        <version>3.8.1</version>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
@@ -188,7 +190,7 @@
       <plugin>
         <groupId>io.zipkin.centralsync-maven-plugin</groupId>
         <artifactId>centralsync-maven-plugin</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.1</version>
         <configuration>
           <subject>opentracing</subject>
           <repo>maven</repo>
@@ -263,7 +265,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>3.0.1</version>
+            <version>3.1.0</version>
             <executions>
               <execution>
                 <id>attach-sources</id>
@@ -277,7 +279,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.1.0</version>
+            <version>3.1.1</version>
             <configuration>
               <failOnError>false</failOnError>
             </configuration>
