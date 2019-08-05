@@ -166,9 +166,11 @@ public class TracingKafkaTest {
   public void with_parent() throws Exception {
     Producer<Integer, String> producer = createTracingProducer();
 
-    try (Scope ignored = mockTracer.buildSpan("parent").startActive(true)) {
+    final MockSpan parent = mockTracer.buildSpan("parent").start();
+    try (Scope ignored = mockTracer.activateSpan(parent)) {
       producer.send(new ProducerRecord<>("messages", 1, "test"));
     }
+    parent.finish();
 
     final CountDownLatch latch = new CountDownLatch(1);
     createConsumer(latch, 1, false, null);
@@ -178,7 +180,6 @@ public class TracingKafkaTest {
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(3, mockSpans.size());
 
-    MockSpan parent = getByOperationName(mockSpans, "parent");
     assertNotNull(parent);
 
     for (MockSpan span : mockSpans) {
