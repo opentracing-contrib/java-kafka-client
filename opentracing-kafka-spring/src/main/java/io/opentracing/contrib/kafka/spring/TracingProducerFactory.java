@@ -16,7 +16,6 @@ package io.opentracing.contrib.kafka.spring;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.TracingKafkaProducer;
-import io.opentracing.util.GlobalTracer;
 import java.util.function.BiFunction;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -35,13 +34,6 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
     this.producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_OPERATION_NAME;
   }
 
-  /**
-   * GlobalTracer is used to get tracer
-   */
-  public TracingProducerFactory(ProducerFactory<K, V> producerFactory) {
-    this(producerFactory, GlobalTracer.get());
-  }
-
   public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer,
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this.producerFactory = producerFactory;
@@ -51,14 +43,6 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
         : producerSpanNameProvider;
   }
 
-  /**
-   * GlobalTracer is used to get tracer
-   */
-  public TracingProducerFactory(ProducerFactory<K, V> producerFactory,
-      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
-    this(producerFactory, GlobalTracer.get(), producerSpanNameProvider);
-  }
-
   @Override
   public Producer<K, V> createProducer() {
     return new TracingKafkaProducer<>(producerFactory.createProducer(), tracer,
@@ -66,8 +50,29 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
   }
 
   @Override
+  public Producer<K, V> createProducer(String txIdPrefix) {
+    return new TracingKafkaProducer<>(producerFactory.createProducer(txIdPrefix), tracer,
+        producerSpanNameProvider);
+  }
+
+  @Override
   public boolean transactionCapable() {
     return producerFactory.transactionCapable();
+  }
+
+  @Override
+  public void closeProducerFor(String transactionIdSuffix) {
+    producerFactory.closeProducerFor(transactionIdSuffix);
+  }
+
+  @Override
+  public boolean isProducerPerConsumerPartition() {
+    return producerFactory.isProducerPerConsumerPartition();
+  }
+
+  @Override
+  public void closeThreadBoundProducer() {
+    producerFactory.closeThreadBoundProducer();
   }
 
   @Override

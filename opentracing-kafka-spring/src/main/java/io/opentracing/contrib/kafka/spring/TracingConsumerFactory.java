@@ -16,8 +16,8 @@ package io.opentracing.contrib.kafka.spring;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.TracingKafkaConsumer;
-import io.opentracing.util.GlobalTracer;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -36,13 +36,6 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
     this.consumerSpanNameProvider = ClientSpanNameProvider.CONSUMER_OPERATION_NAME;
   }
 
-  /**
-   * GlobalTracer is used to get tracer
-   */
-  public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory) {
-    this(consumerFactory, GlobalTracer.get());
-  }
-
   public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory, Tracer tracer,
       BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     this.tracer = tracer;
@@ -50,14 +43,6 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
     this.consumerSpanNameProvider = (consumerSpanNameProvider == null)
         ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
         : consumerSpanNameProvider;
-  }
-
-  /**
-   * GlobalTracer is used to get tracer
-   */
-  public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory,
-      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
-    this(consumerFactory, GlobalTracer.get(), consumerSpanNameProvider);
   }
 
   @Override
@@ -84,6 +69,13 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
     return new TracingKafkaConsumer<>(
         consumerFactory.createConsumer(groupId, clientIdPrefix, clientIdSuffix),
         tracer, consumerSpanNameProvider);
+  }
+
+  @Override
+  public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix,
+      String clientIdSuffix, Properties properties) {
+    return new TracingKafkaConsumer<>(consumerFactory.createConsumer(groupId, clientIdPrefix,
+        clientIdSuffix, properties), tracer, consumerSpanNameProvider);
   }
 
   @Override
