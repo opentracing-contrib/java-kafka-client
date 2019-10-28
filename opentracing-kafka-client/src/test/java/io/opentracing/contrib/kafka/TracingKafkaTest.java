@@ -113,6 +113,43 @@ public class TracingKafkaTest {
   }
 
   @Test
+  public void testWithParentContext() throws Exception {
+    TracingKafkaProducer<Integer, String> producer = createTracingProducer();
+
+    final MockSpan parent = mockTracer.buildSpan("parent").start();
+
+    // Send 1
+    producer.send(new ProducerRecord<>("messages", 1, "test"), parent.context());
+
+    // Send 2
+    producer.send(new ProducerRecord<>("messages", 1, "test"),
+        (metadata, exception) -> assertEquals("messages", metadata.topic()), parent.context());
+
+    final CountDownLatch latch = new CountDownLatch(2);
+    createConsumer(latch, 1, false, null);
+
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(4, mockSpans.size());
+    checkSpans(mockSpans);
+    for (MockSpan span : mockSpans) {
+      assertEquals(parent.context().traceId(), span.context().traceId());
+    }
+
+    final List<MockSpan> sendSpans = getByOperationNameAll(mockSpans,
+        TracingKafkaUtils.TO_PREFIX + "messages");
+    assertEquals(2, sendSpans.size());
+    for (MockSpan sendSpan : sendSpans) {
+      assertEquals(parent.context().spanId(), sendSpan.parentId());
+    }
+
+    parent.finish();
+
+    assertNull(mockTracer.activeSpan());
+  }
+
+  @Test
   public void testNotTracedProducer() throws Exception {
     Producer<Integer, String> producer = createProducer();
 
@@ -266,7 +303,7 @@ public class TracingKafkaTest {
   }
 
 
-  private Producer<Integer, String> createTracingProducer() {
+  private TracingKafkaProducer<Integer, String> createTracingProducer() {
     return new TracingKafkaProducer<>(createProducer(), mockTracer);
   }
 
@@ -361,6 +398,16 @@ public class TracingKafkaTest {
     }
 
     return found.isEmpty() ? null : found.get(0);
+  }
+
+  private List<MockSpan> getByOperationNameAll(List<MockSpan> spans, String operationName) {
+    List<MockSpan> found = new ArrayList<>();
+    for (MockSpan span : spans) {
+      if (operationName.equals(span.operationName())) {
+        found.add(span);
+      }
+    }
+    return found;
   }
 
 }
