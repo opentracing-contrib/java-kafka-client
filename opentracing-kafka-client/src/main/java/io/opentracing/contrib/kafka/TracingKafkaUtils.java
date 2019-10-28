@@ -56,11 +56,12 @@ public class TracingKafkaUtils {
   }
 
   public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
-    return buildAndInjectSpan(record, tracer, ClientSpanNameProvider.PRODUCER_OPERATION_NAME);
+    return buildAndInjectSpan(record, tracer, ClientSpanNameProvider.PRODUCER_OPERATION_NAME, null);
   }
 
   public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
-      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
+      SpanContext parent) {
 
     String producerOper =
         TO_PREFIX + record.topic(); // <======== It provides better readability in the UI
@@ -72,6 +73,8 @@ public class TracingKafkaUtils {
 
     if (spanContext != null) {
       spanBuilder.asChildOf(spanContext);
+    } else if (parent != null) {
+      spanBuilder.asChildOf(parent);
     }
 
     Span span = spanBuilder.start();

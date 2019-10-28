@@ -16,8 +16,8 @@ package io.opentracing.contrib.kafka;
 
 import io.opentracing.Scope;
 import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.util.GlobalTracer;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +47,6 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     this.producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_OPERATION_NAME;
   }
 
-  /**
-   * GlobalTracer is used to get tracer
-   */
-  public TracingKafkaProducer(Producer<K, V> producer) {
-    this(producer, GlobalTracer.get());
-  }
-
   public TracingKafkaProducer(Producer<K, V> producer, Tracer tracer,
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this.producer = producer;
@@ -61,14 +54,6 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
     this.producerSpanNameProvider = (producerSpanNameProvider == null)
         ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
         : producerSpanNameProvider;
-  }
-
-  /**
-   * GlobalTracer is used to get tracer
-   */
-  public TracingKafkaProducer(Producer<K, V> producer,
-      BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
-    this(producer, GlobalTracer.get(), producerSpanNameProvider);
   }
 
   @Override
@@ -82,9 +67,10 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
   }
 
   @Override
-  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> map, String s)
+  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+      String consumerGroupId)
       throws ProducerFencedException {
-    producer.sendOffsetsToTransaction(map, s);
+    producer.sendOffsetsToTransaction(offsets, consumerGroupId);
   }
 
   @Override
@@ -99,11 +85,20 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
 
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
-    return send(record, null);
+    return send(record, null, null);
+  }
+
+  public Future<RecordMetadata> send(ProducerRecord<K, V> record, SpanContext parent) {
+    return send(record, null, parent);
   }
 
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
+    return send(record, callback, null);
+  }
+
+  public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback,
+      SpanContext parent) {
     /*
     // Create wrappedRecord because headers can be read only in record (if record is sent second time)
     ProducerRecord<K, V> wrappedRecord = new ProducerRecord<>(record.topic(),
@@ -114,7 +109,8 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
         record.headers());
     */
 
-    Span span = TracingKafkaUtils.buildAndInjectSpan(record, tracer, producerSpanNameProvider);
+    Span span = TracingKafkaUtils
+        .buildAndInjectSpan(record, tracer, producerSpanNameProvider, parent);
     try (Scope ignored = tracer.activateSpan(span)) {
       Callback wrappedCallback = new TracingCallback(callback, span, tracer);
       return producer.send(record, wrappedCallback);
