@@ -377,7 +377,7 @@ public class TracingKafkaTest {
         assertTrue(offset >= 0L);
         assertEquals("messages", mockSpan.tags().get("topic"));
       }
-      assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
+      assertEquals(StandardSpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
       assertTrue(operationName.equals(TracingKafkaUtils.TO_PREFIX + "messages")
           || operationName.equals(TracingKafkaUtils.FROM_PREFIX + "messages"));
