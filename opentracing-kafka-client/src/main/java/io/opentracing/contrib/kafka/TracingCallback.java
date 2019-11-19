@@ -37,7 +37,7 @@ public class TracingCallback implements Callback {
   @Override
   public void onCompletion(RecordMetadata metadata, Exception exception) {
     if (exception != null) {
-      SpanDecorator.onError(exception, span);
+      StandardSpanDecorator.onError(exception, span);
     }
 
     try (Scope ignored = tracer.scopeManager().activate(span)) {
