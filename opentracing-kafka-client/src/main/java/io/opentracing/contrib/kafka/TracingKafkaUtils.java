@@ -20,7 +20,8 @@ import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.function.BiFunction;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -31,113 +32,112 @@ import org.slf4j.LoggerFactory;
 
 public class TracingKafkaUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
-    public static final String TO_PREFIX = "To_";
-    public static final String FROM_PREFIX = "From_";
+  private static final Logger logger = LoggerFactory.getLogger(TracingKafkaUtils.class);
+  public static final String TO_PREFIX = "To_";
+  public static final String FROM_PREFIX = "From_";
 
-    /**
-     * Extract Span Context from record headers
-     *
-     * @param headers record headers
-     * @return span context
-     */
-    public static SpanContext extractSpanContext(Headers headers, Tracer tracer) {
-        return tracer
-                .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers));
+  /**
+   * Extract Span Context from record headers
+   *
+   * @param headers record headers
+   * @return span context
+   */
+  public static SpanContext extractSpanContext(Headers headers, Tracer tracer) {
+    return tracer
+            .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers));
+  }
+
+  /**
+   * Inject Span Context to record headers
+   *
+   * @param spanContext Span Context
+   * @param headers     record headers
+   */
+  static void inject(SpanContext spanContext, Headers headers,
+                     Tracer tracer) {
+    tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
+            new HeadersMapInjectAdapter(headers));
+  }
+
+  public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
+    return buildAndInjectSpan(record, tracer, ClientSpanNameProvider.PRODUCER_OPERATION_NAME, null,
+            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+  }
+
+  public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
+                                               BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
+                                               SpanContext parent) {
+    return buildAndInjectSpan(record, tracer, producerSpanNameProvider, parent,
+            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+  }
+
+  static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
+                                        BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
+                                        SpanContext parent, Collection<SpanDecorator> spanDecorators) {
+    String producerOper =
+            TO_PREFIX + record.topic(); // <======== It provides better readability in the UI
+    Tracer.SpanBuilder spanBuilder = tracer
+            .buildSpan(producerSpanNameProvider.apply(producerOper, record))
+            .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
+
+    SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
+
+    if (spanContext != null) {
+      spanBuilder.asChildOf(spanContext);
+    } else if (parent != null) {
+      spanBuilder.asChildOf(parent);
     }
 
-    /**
-     * Inject Span Context to record headers
-     *
-     * @param spanContext Span Context
-     * @param headers     record headers
-     */
-    static void inject(SpanContext spanContext, Headers headers,
-                       Tracer tracer) {
-        tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
-                new HeadersMapInjectAdapter(headers));
+    Span span = spanBuilder.start();
+
+    for (SpanDecorator decorator : spanDecorators) {
+      decorator.onSend(record, span);
     }
 
-    public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
-        return buildAndInjectSpan(record, tracer, ClientSpanNameProvider.PRODUCER_OPERATION_NAME, null, null);
+    try {
+      TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
+    } catch (Exception e) {
+      // it can happen if headers are read only (when record is sent second time)
+      logger.error("failed to inject span context. sending record second time?", e);
     }
 
-    public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
-                                                 BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
-                                                 SpanContext parent) {
-        return buildAndInjectSpan(record, tracer, producerSpanNameProvider, parent, null);
+    return span;
+  }
+
+  public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer) {
+    buildAndFinishChildSpan(record, tracer, ClientSpanNameProvider.CONSUMER_OPERATION_NAME,
+            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+  }
+
+  public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
+                                                    BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+    buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider,
+            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+  }
+
+  static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
+                                             BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
+                                             Collection<SpanDecorator> spanDecorators) {
+    SpanContext parentContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
+    String consumerOper =
+            FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
+    Tracer.SpanBuilder spanBuilder = tracer
+            .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
+            .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
+
+    if (parentContext != null) {
+      spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
     }
 
-    public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
-                                                 BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
-                                                 SpanContext parent,
-                                                 List<SpanDecorator> spanDecorators) {
-        String producerOper =
-                TO_PREFIX + record.topic(); // <======== It provides better readability in the UI
-        Tracer.SpanBuilder spanBuilder = tracer
-                .buildSpan(producerSpanNameProvider.apply(producerOper, record))
-                .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
+    Span span = spanBuilder.start();
 
-        SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
-
-        if (spanContext != null) {
-            spanBuilder.asChildOf(spanContext);
-        } else if (parent != null) {
-            spanBuilder.asChildOf(parent);
-        }
-
-        Span span = spanBuilder.start();
-        //SpanDecorator.onSend(record, span);
-        if (spanDecorators != null) {
-            for (SpanDecorator decorator : spanDecorators) {
-                decorator.onSend(record, span);
-            }
-        }
-
-        try {
-            TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
-        } catch (Exception e) {
-            // it can happen if headers are read only (when record is sent second time)
-            logger.error("failed to inject span context. sending record second time?", e);
-        }
-
-        return span;
+    for (SpanDecorator decorator : spanDecorators) {
+      decorator.onResponse(record, span);
     }
 
-    public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer) {
-        buildAndFinishChildSpan(record, tracer, ClientSpanNameProvider.CONSUMER_OPERATION_NAME, null);
-    }
+    span.finish();
 
-    public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
-                                                      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
-        buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider, null);
-    }
-
-    public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
-                                                      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
-                                                      List<SpanDecorator> spanDecorators) {
-        SpanContext parentContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
-
-        String consumerOper =
-                FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
-        Tracer.SpanBuilder spanBuilder = tracer
-                .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
-                .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
-
-        if (parentContext != null) {
-            spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
-        }
-
-        Span span = spanBuilder.start();
-        if (spanDecorators != null) {
-            for (SpanDecorator decorator : spanDecorators) {
-                decorator.onResponse(record, span);
-            }
-        }
-        //SpanDecorator.onResponse(record, span);
-        span.finish();
-
-        // Inject created span context into record headers for extraction by client to continue span chain
-        TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
-    }
+    // Inject created span context into record headers for extraction by client to continue span chain
+    TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
+  }
 }

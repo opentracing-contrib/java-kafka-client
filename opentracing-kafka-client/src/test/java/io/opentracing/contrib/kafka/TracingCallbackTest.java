@@ -22,7 +22,12 @@ import io.opentracing.Span;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
+
+import java.util.Arrays;
 import java.util.List;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,6 +56,23 @@ public class TracingCallbackTest {
   }
 
   @Test
+  public void onCompletionWithCustomErrorDecorators() {
+    Span span = mockTracer.buildSpan("test").start();
+    try (Scope ignored = mockTracer.activateSpan(span)) {
+      TracingCallback callback = new TracingCallback(null, span, mockTracer,
+              Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
+      callback.onCompletion(null, new RuntimeException("test"));
+    }
+
+    List<MockSpan> finished = mockTracer.finishedSpans();
+    assertEquals(1, finished.size());
+    assertEquals(1, finished.get(0).logEntries().size());
+    assertEquals(true, finished.get(0).tags().get(Tags.ERROR.getKey()));
+    assertEquals("consumer-service-test", finished.get(0).tags().get("error.of"));
+    assertEquals("error-test", finished.get(0).tags().get("new.error.tag"));
+  }
+
+  @Test
   public void onCompletion() {
     Span span = mockTracer.buildSpan("test").start();
     try (Scope ignored = mockTracer.activateSpan(span)) {
@@ -62,5 +84,27 @@ public class TracingCallbackTest {
     assertEquals(1, finished.size());
     assertEquals(0, finished.get(0).logEntries().size());
     assertNull(finished.get(0).tags().get(Tags.ERROR.getKey()));
+  }
+
+  private SpanDecorator createDecorator() {
+    return new SpanDecorator() {
+      @Override
+      public <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
+        span.setTag("peer.service", "producer-service-test");
+        span.setTag("new.tag.test", "new-producer-test");
+      }
+
+      @Override
+      public <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
+        span.setTag("peer.service", "consumer-service-test");
+        span.setTag("new.tag.test", "new-consumer-test");
+      }
+
+      @Override
+      public <K, V> void onError(Exception exception, Span span) {
+        span.setTag("error.of", "consumer-service-test");
+        span.setTag("new.error.tag", "error-test");
+      }
+    };
   }
 }

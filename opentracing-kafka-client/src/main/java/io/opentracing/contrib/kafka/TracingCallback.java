@@ -20,11 +20,15 @@ import io.opentracing.Tracer;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import java.util.Collection;
+import java.util.Collections;
+
 /**
  * Callback executed after the producer has finished sending a message
  */
 public class TracingCallback implements Callback {
   private final Callback callback;
+  private Collection<SpanDecorator> spanDecorators;
   private final Span span;
   private final Tracer tracer;
 
@@ -32,12 +36,22 @@ public class TracingCallback implements Callback {
     this.callback = callback;
     this.span = span;
     this.tracer = tracer;
+    this.spanDecorators = Collections.singletonList(SpanDecorator.STANDARD_TAGS);
+  }
+
+  TracingCallback(Callback callback, Span span, Tracer tracer, Collection<SpanDecorator> spanDecorators) {
+    this.callback = callback;
+    this.span = span;
+    this.tracer = tracer;
+    this.spanDecorators = spanDecorators;
   }
 
   @Override
   public void onCompletion(RecordMetadata metadata, Exception exception) {
     if (exception != null) {
-      StandardSpanDecorator.onError(exception, span);
+      for (SpanDecorator decorator : spanDecorators) {
+        decorator.onError(exception, span);
+      }
     }
 
     try (Scope ignored = tracer.scopeManager().activate(span)) {

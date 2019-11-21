@@ -20,21 +20,21 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
+
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -46,10 +46,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.*;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -302,9 +299,299 @@ public class TracingKafkaTest {
     assertTrue(latch.await(30, TimeUnit.SECONDS));
   }
 
+  @Test
+  public void testProducerBuilderWithDecorators() throws InterruptedException {
+    Producer<Integer, String> producer = createProducerWithDecorators(null);
+
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    producer = createProducerWithDecorators(Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
+
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    producer = createProducerWithDecorators(new ArrayList());
+
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    final CountDownLatch latch = new CountDownLatch(3);
+    createConsumer(latch, 1, false, null);
+
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(6, mockSpans.size());
+
+    // With only standard decorator
+    MockSpan standardSpan = mockSpans.get(0);
+    checkSpans(Collections.singletonList(standardSpan));
+    assertEquals(4, standardSpan.tags().size());
+    assertEquals("kafka", standardSpan.tags().get("peer.service"));
+
+    // With standard and custom decorator
+    MockSpan customSpan = mockSpans.get(1);
+    checkSpans(Collections.singletonList(customSpan));
+    assertEquals(5, customSpan.tags().size());
+    assertEquals("producer-service-test", customSpan.tags().get("peer.service"));
+    assertEquals("new-producer-test", customSpan.tags().get("new.tag.test"));
+
+    // Without any decorator
+    assertEquals(1, mockSpans.get(2).tags().size());
+    assertEquals("producer", mockSpans.get(2).tags().get("span.kind"));
+  }
+
+  @Test
+  public void testProducerBuilderWithSpanNameProvider() throws InterruptedException {
+    Producer<Integer, String> producer = createProducerWithSpanNameProvider(null);
+    ProducerRecord<Integer, String> record1 = new ProducerRecord<>("messages", 1, "test");
+
+    producer.send(record1);
+
+    BiFunction<String, ProducerRecord, String> operationNameProvider =
+        (operationName, producerRecord) -> createSpanNameProvider();
+    producer = createProducerWithSpanNameProvider(operationNameProvider);
+
+    ProducerRecord<Integer, String> record2 = new ProducerRecord<>("messages", 1, "test");
+
+    producer.send(record2);
+
+    final CountDownLatch latch = new CountDownLatch(2);
+    createConsumer(latch, 1, false, null);
+
+    producer.close();
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(4, mockSpans.size());
+
+    // With standard span name provider
+    assertEquals("To_" + record1.topic(), mockSpans.get(0).operationName());
+
+    // With custom span name provider
+    assertEquals("Test_SpanNameProvider", mockSpans.get(1).operationName());
+  }
+
+  @Test
+  public void testConsumerBuilderWithStandardDecorators() throws InterruptedException {
+    Producer<Integer, String> producer = createTracingProducer();
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    producer.close();
+
+    assertEquals(1, mockTracer.finishedSpans().size());
+
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final CountDownLatch latch = new CountDownLatch(1);
+
+    executorService.execute(() -> {
+      Consumer<Integer, String> consumer = createConsumerWithDecorators(null);
+
+      while (latch.getCount() > 0) {
+        ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord<Integer, String> record : records) {
+          SpanContext spanContext = TracingKafkaUtils
+              .extractSpanContext(record.headers(), mockTracer);
+          assertNotNull(spanContext);
+          assertEquals("test", record.value());
+          assertEquals((Integer) 1, record.key());
+
+          consumer.commitSync();
+          latch.countDown();
+        }
+      }
+      consumer.close();
+    });
+
+    assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+    checkSpans(mockSpans);
+
+    MockSpan standardSpan = mockSpans.get(1);
+    assertEquals(6, standardSpan.tags().size());
+    assertEquals("kafka", standardSpan.tags().get("peer.service"));
+  }
+
+  @Test
+  public void testConsumerBuilderWithCustomDecorators() throws InterruptedException {
+    Producer<Integer, String> producer = createTracingProducer();
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    producer.close();
+
+    assertEquals(1, mockTracer.finishedSpans().size());
+
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final CountDownLatch latch = new CountDownLatch(1);
+
+    executorService.execute(() -> {
+      Consumer<Integer, String> consumer =
+          createConsumerWithDecorators(Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
+
+      while (latch.getCount() > 0) {
+        ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord<Integer, String> record : records) {
+          SpanContext spanContext = TracingKafkaUtils
+              .extractSpanContext(record.headers(), mockTracer);
+          assertNotNull(spanContext);
+          assertEquals("test", record.value());
+          assertEquals((Integer) 1, record.key());
+
+          consumer.commitSync();
+          latch.countDown();
+        }
+      }
+      consumer.close();
+    });
+
+    assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+    checkSpans(mockSpans);
+
+    MockSpan customSpan = mockSpans.get(1);
+    assertEquals(7, customSpan.tags().size());
+    assertEquals("consumer-service-test", customSpan.tags().get("peer.service"));
+    assertEquals("new-consumer-test", customSpan.tags().get("new.tag.test"));
+  }
+
+  @Test
+  public void testConsumerBuilderWithoutDecorators() throws InterruptedException {
+    Producer<Integer, String> producer = createTracingProducer();
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+
+    producer.close();
+
+    assertEquals(1, mockTracer.finishedSpans().size());
+
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final CountDownLatch latch = new CountDownLatch(1);
+
+    executorService.execute(() -> {
+      Consumer<Integer, String> consumer = createConsumerWithDecorators(new ArrayList());
+
+      while (latch.getCount() > 0) {
+        ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord<Integer, String> record : records) {
+          SpanContext spanContext = TracingKafkaUtils
+              .extractSpanContext(record.headers(), mockTracer);
+          assertNotNull(spanContext);
+          assertEquals("test", record.value());
+          assertEquals((Integer) 1, record.key());
+
+          consumer.commitSync();
+          latch.countDown();
+        }
+      }
+      consumer.close();
+    });
+
+    assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+
+    MockSpan span = mockSpans.get(1);
+    assertEquals(1, span.tags().size());
+    assertEquals("consumer", span.tags().get("span.kind"));
+  }
+
+  @Test
+  public void testConsumerBuilderWithCustomSpanNameProvider() throws InterruptedException {
+    Producer<Integer, String> producer = createTracingProducer();
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+    producer.close();
+
+    assertEquals(1, mockTracer.finishedSpans().size());
+
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final CountDownLatch latch = new CountDownLatch(1);
+
+    executorService.execute(() -> {
+      BiFunction<String, ConsumerRecord, String> operationNameProvider =
+          (operationName, consumerRecord) -> createSpanNameProvider();
+      Consumer<Integer, String> consumer = createConsumerWithSpanNameProvider(operationNameProvider);
+
+      while (latch.getCount() > 0) {
+        ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord<Integer, String> record : records) {
+          SpanContext spanContext = TracingKafkaUtils
+              .extractSpanContext(record.headers(), mockTracer);
+          assertNotNull(spanContext);
+          assertEquals("test", record.value());
+          assertEquals((Integer) 1, record.key());
+
+          consumer.commitSync();
+          latch.countDown();
+        }
+      }
+      consumer.close();
+    });
+
+    assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+    assertEquals("Test_SpanNameProvider", mockTracer.finishedSpans().get(1).operationName());
+  }
+
+  @Test
+  public void testConsumerBuilderWithStandardSpanNameProvider() throws InterruptedException {
+    Producer<Integer, String> producer = createTracingProducer();
+    producer.send(new ProducerRecord<>("messages", 1, "test"));
+    producer.close();
+
+    assertEquals(1, mockTracer.finishedSpans().size());
+
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final CountDownLatch latch = new CountDownLatch(1);
+
+    executorService.execute(() -> {
+      Consumer<Integer, String> consumer = createConsumerWithSpanNameProvider(null);
+
+      while (latch.getCount() > 0) {
+        ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord<Integer, String> record : records) {
+          SpanContext spanContext = TracingKafkaUtils
+              .extractSpanContext(record.headers(), mockTracer);
+          assertNotNull(spanContext);
+          assertEquals("test", record.value());
+          assertEquals((Integer) 1, record.key());
+
+          consumer.commitSync();
+          latch.countDown();
+        }
+      }
+      consumer.close();
+    });
+
+    assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+    assertEquals("From_messages", mockTracer.finishedSpans().get(1).operationName());
+  }
 
   private TracingKafkaProducer<Integer, String> createTracingProducer() {
     return new TracingKafkaProducer<>(createProducer(), mockTracer);
+  }
+
+  private SpanDecorator createDecorator() {
+    return new SpanDecorator() {
+      @Override
+      public <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
+        span.setTag("peer.service", "producer-service-test");
+        span.setTag("new.tag.test", "new-producer-test");
+      }
+
+      @Override
+      public <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
+        span.setTag("peer.service", "consumer-service-test");
+        span.setTag("new.tag.test", "new-consumer-test");
+      }
+
+      @Override
+      public <K, V> void onError(Exception exception, Span span) {
+        span.setTag("error.of", "consumer-service-test");
+        span.setTag("new.error.tag", "error-test");
+      }
+    };
   }
 
   private Producer<Integer, String> createProducer() {
@@ -316,6 +603,66 @@ public class TracingKafkaTest {
   private Producer<Integer, String> createNameProvidedProducer(
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     return new TracingKafkaProducer<>(createProducer(), mockTracer, producerSpanNameProvider);
+  }
+
+  private Consumer<Integer, String> createConsumerWithDecorators(Collection<SpanDecorator> spanDecorators) {
+    Map<String, Object> consumerProps = KafkaTestUtils
+        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
+    consumerProps.put("auto.offset.reset", "earliest");
+    KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+    TracingKafkaConsumerBuilder tracingKafkaConsumerBuilder =
+        new TracingKafkaConsumerBuilder(kafkaConsumer, mockTracer);
+
+    if (spanDecorators != null) {
+      tracingKafkaConsumerBuilder = tracingKafkaConsumerBuilder.withDecorators(spanDecorators);
+    }
+    TracingKafkaConsumer tracingKafkaConsumer = tracingKafkaConsumerBuilder.build();
+    tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
+
+    return tracingKafkaConsumer;
+  }
+
+  private Consumer<Integer, String> createConsumerWithSpanNameProvider(BiFunction<String, ConsumerRecord, String> spanNameProvider) {
+    Map<String, Object> consumerProps = KafkaTestUtils
+        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
+    consumerProps.put("auto.offset.reset", "earliest");
+    KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProps);
+    TracingKafkaConsumerBuilder tracingKafkaConsumerBuilder =
+        new TracingKafkaConsumerBuilder(kafkaConsumer, mockTracer);
+
+    if (spanNameProvider != null) {
+      tracingKafkaConsumerBuilder = tracingKafkaConsumerBuilder.withSpanNameProvider(spanNameProvider);
+    }
+    TracingKafkaConsumer tracingKafkaConsumer = tracingKafkaConsumerBuilder.build();
+    tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
+
+    return tracingKafkaConsumer;
+  }
+
+  private Producer<Integer, String> createProducerWithDecorators(Collection<SpanDecorator> spanDecorators) {
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
+    KafkaProducer kafkaProducer = new KafkaProducer<>(senderProps);
+    TracingKafkaProducerBuilder tracingKafkaProducerBuilder =
+        new TracingKafkaProducerBuilder<>(kafkaProducer, mockTracer);
+    if (spanDecorators != null) {
+      tracingKafkaProducerBuilder = tracingKafkaProducerBuilder.withDecorators(spanDecorators);
+    }
+
+    return tracingKafkaProducerBuilder.build();
+  }
+
+  private Producer<Integer, String> createProducerWithSpanNameProvider(BiFunction<String, ProducerRecord, String> spanNameProvider) {
+    Map<String, Object> senderProps = KafkaTestUtils
+        .producerProps(embeddedKafka.getEmbeddedKafka());
+    KafkaProducer kafkaProducer = new KafkaProducer<>(senderProps);
+    TracingKafkaProducerBuilder tracingKafkaProducerBuilder =
+        new TracingKafkaProducerBuilder<>(kafkaProducer, mockTracer);
+    if (spanNameProvider != null) {
+      tracingKafkaProducerBuilder = tracingKafkaProducerBuilder.withSpanNameProvider(spanNameProvider);
+    }
+
+    return tracingKafkaProducerBuilder.build();
   }
 
   private void createConsumer(final CountDownLatch latch, final Integer key,
@@ -362,6 +709,10 @@ public class TracingKafkaTest {
 
     assertTrue(latch.await(30, TimeUnit.SECONDS));
 
+  }
+
+  private static String createSpanNameProvider() {
+    return "Test_SpanNameProvider";
   }
 
   private void checkSpans(List<MockSpan> mockSpans) {

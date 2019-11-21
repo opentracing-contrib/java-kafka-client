@@ -24,54 +24,47 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+class StandardSpanDecorator implements SpanDecorator {
 
-class StandardSpanDecorator {
+  static final String COMPONENT_NAME = "java-kafka";
+  static final String KAFKA_SERVICE = "kafka";
 
-    static final String COMPONENT_NAME = "java-kafka";
-    static final String KAFKA_SERVICE = "kafka";
-
-    /**
-     * Called before record is sent by producer
-     */
-    static <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
-        setCommonTags(span);
-        Tags.MESSAGE_BUS_DESTINATION.set(span, record.topic());
-        if (record.partition() != null) {
-            span.setTag("partition", record.partition());
-        }
+  public <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
+    setCommonTags(span);
+    Tags.MESSAGE_BUS_DESTINATION.set(span, record.topic());
+    if (record.partition() != null) {
+      span.setTag("partition", record.partition());
     }
+  }
 
-    /**
-     * Called when record is received in consumer
-     */
-    static <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
-        setCommonTags(span);
-        span.setTag("partition", record.partition());
-        span.setTag("topic", record.topic());
-        span.setTag("offset", record.offset());
-    }
+  public <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
+    setCommonTags(span);
+    span.setTag("partition", record.partition());
+    span.setTag("topic", record.topic());
+    span.setTag("offset", record.offset());
+  }
 
-    static void onError(Exception exception, Span span) {
-        Tags.ERROR.set(span, Boolean.TRUE);
-        span.log(errorLogs(exception));
-    }
+  public void onError(Exception exception, Span span) {
+    Tags.ERROR.set(span, Boolean.TRUE);
+    span.log(errorLogs(exception));
+  }
 
-    private static Map<String, Object> errorLogs(Throwable throwable) {
-        Map<String, Object> errorLogs = new HashMap<>(4);
-        errorLogs.put("event", Tags.ERROR.getKey());
-        errorLogs.put("error.kind", throwable.getClass().getName());
-        errorLogs.put("error.object", throwable);
-        errorLogs.put("message", throwable.getMessage());
+  private static Map<String, Object> errorLogs(Throwable throwable) {
+    Map<String, Object> errorLogs = new HashMap<>(4);
+    errorLogs.put("event", Tags.ERROR.getKey());
+    errorLogs.put("error.kind", throwable.getClass().getName());
+    errorLogs.put("error.object", throwable);
+    errorLogs.put("message", throwable.getMessage());
 
-        StringWriter sw = new StringWriter();
-        throwable.printStackTrace(new PrintWriter(sw));
-        errorLogs.put("stack", sw.toString());
+    StringWriter sw = new StringWriter();
+    throwable.printStackTrace(new PrintWriter(sw));
+    errorLogs.put("stack", sw.toString());
 
-        return errorLogs;
-    }
+    return errorLogs;
+  }
 
-    private static void setCommonTags(Span span) {
-        Tags.COMPONENT.set(span, COMPONENT_NAME);
-        Tags.PEER_SERVICE.set(span, KAFKA_SERVICE);
-    }
+  private static void setCommonTags(Span span) {
+    Tags.COMPONENT.set(span, COMPONENT_NAME);
+    Tags.PEER_SERVICE.set(span, KAFKA_SERVICE);
+  }
 }
