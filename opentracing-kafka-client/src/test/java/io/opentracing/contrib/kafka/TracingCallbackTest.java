@@ -60,15 +60,14 @@ public class TracingCallbackTest {
     Span span = mockTracer.buildSpan("test").start();
     try (Scope ignored = mockTracer.activateSpan(span)) {
       TracingCallback callback = new TracingCallback(null, span, mockTracer,
-              Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
+          Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
       callback.onCompletion(null, new RuntimeException("test"));
     }
 
     List<MockSpan> finished = mockTracer.finishedSpans();
     assertEquals(1, finished.size());
-    assertEquals(1, finished.get(0).logEntries().size());
     assertEquals(true, finished.get(0).tags().get(Tags.ERROR.getKey()));
-    assertEquals("consumer-service-test", finished.get(0).tags().get("error.of"));
+    assertEquals("overwritten", finished.get(0).tags().get("error.of"));
     assertEquals("error-test", finished.get(0).tags().get("new.error.tag"));
   }
 
@@ -90,19 +89,15 @@ public class TracingCallbackTest {
     return new SpanDecorator() {
       @Override
       public <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
-        span.setTag("peer.service", "producer-service-test");
-        span.setTag("new.tag.test", "new-producer-test");
       }
 
       @Override
       public <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
-        span.setTag("peer.service", "consumer-service-test");
-        span.setTag("new.tag.test", "new-consumer-test");
       }
 
       @Override
       public <K, V> void onError(Exception exception, Span span) {
-        span.setTag("error.of", "consumer-service-test");
+        span.setTag("error.of", "overwritten");
         span.setTag("new.error.tag", "error-test");
       }
     };

@@ -319,23 +319,19 @@ public class TracingKafkaTest {
     producer.close();
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
-    assertEquals(6, mockSpans.size());
 
     // With only standard decorator
     MockSpan standardSpan = mockSpans.get(0);
     checkSpans(Collections.singletonList(standardSpan));
-    assertEquals(4, standardSpan.tags().size());
     assertEquals("kafka", standardSpan.tags().get("peer.service"));
 
     // With standard and custom decorator
     MockSpan customSpan = mockSpans.get(1);
     checkSpans(Collections.singletonList(customSpan));
-    assertEquals(5, customSpan.tags().size());
-    assertEquals("producer-service-test", customSpan.tags().get("peer.service"));
+    assertEquals("overwritten", customSpan.tags().get("peer.service"));
     assertEquals("new-producer-test", customSpan.tags().get("new.tag.test"));
 
     // Without any decorator
-    assertEquals(1, mockSpans.get(2).tags().size());
     assertEquals("producer", mockSpans.get(2).tags().get("span.kind"));
   }
 
@@ -360,7 +356,6 @@ public class TracingKafkaTest {
     producer.close();
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
-    assertEquals(4, mockSpans.size());
 
     // With standard span name provider
     assertEquals("To_" + record1.topic(), mockSpans.get(0).operationName());
@@ -403,11 +398,9 @@ public class TracingKafkaTest {
     assertTrue(latch.await(30, TimeUnit.SECONDS));
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
-    assertEquals(2, mockSpans.size());
     checkSpans(mockSpans);
 
     MockSpan standardSpan = mockSpans.get(1);
-    assertEquals(6, standardSpan.tags().size());
     assertEquals("kafka", standardSpan.tags().get("peer.service"));
   }
 
@@ -446,12 +439,10 @@ public class TracingKafkaTest {
     assertTrue(latch.await(30, TimeUnit.SECONDS));
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
-    assertEquals(2, mockSpans.size());
     checkSpans(mockSpans);
 
     MockSpan customSpan = mockSpans.get(1);
-    assertEquals(7, customSpan.tags().size());
-    assertEquals("consumer-service-test", customSpan.tags().get("peer.service"));
+    assertEquals("overwritten", customSpan.tags().get("peer.service"));
     assertEquals("new-consumer-test", customSpan.tags().get("new.tag.test"));
   }
 
@@ -489,10 +480,8 @@ public class TracingKafkaTest {
     assertTrue(latch.await(30, TimeUnit.SECONDS));
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
-    assertEquals(2, mockSpans.size());
 
     MockSpan span = mockSpans.get(1);
-    assertEquals(1, span.tags().size());
     assertEquals("consumer", span.tags().get("span.kind"));
   }
 
@@ -576,20 +565,18 @@ public class TracingKafkaTest {
     return new SpanDecorator() {
       @Override
       public <K, V> void onSend(ProducerRecord<K, V> record, Span span) {
-        span.setTag("peer.service", "producer-service-test");
+        span.setTag("peer.service", "overwritten");
         span.setTag("new.tag.test", "new-producer-test");
       }
 
       @Override
       public <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
-        span.setTag("peer.service", "consumer-service-test");
+        span.setTag("peer.service", "overwritten");
         span.setTag("new.tag.test", "new-consumer-test");
       }
 
       @Override
       public <K, V> void onError(Exception exception, Span span) {
-        span.setTag("error.of", "consumer-service-test");
-        span.setTag("new.error.tag", "error-test");
       }
     };
   }
