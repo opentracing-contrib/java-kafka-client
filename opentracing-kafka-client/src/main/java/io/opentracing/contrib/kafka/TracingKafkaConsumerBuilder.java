@@ -14,12 +14,11 @@
 package io.opentracing.contrib.kafka;
 
 import io.opentracing.Tracer;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.function.BiFunction;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 public class TracingKafkaConsumerBuilder<K, V> {
   private Collection<SpanDecorator> spanDecorators;
@@ -39,7 +38,8 @@ public class TracingKafkaConsumerBuilder<K, V> {
     return this;
   }
 
-  public TracingKafkaConsumerBuilder withSpanNameProvider(BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+  public TracingKafkaConsumerBuilder withSpanNameProvider(
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     this.consumerSpanNameProvider = consumerSpanNameProvider;
     return this;
   }

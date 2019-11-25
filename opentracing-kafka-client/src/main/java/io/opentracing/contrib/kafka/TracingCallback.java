@@ -17,11 +17,10 @@ package io.opentracing.contrib.kafka;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.RecordMetadata;
-
 import java.util.Collection;
 import java.util.Collections;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
  * Callback executed after the producer has finished sending a message
@@ -39,7 +38,8 @@ public class TracingCallback implements Callback {
     this.spanDecorators = Collections.singletonList(SpanDecorator.STANDARD_TAGS);
   }
 
-  TracingCallback(Callback callback, Span span, Tracer tracer, Collection<SpanDecorator> spanDecorators) {
+  TracingCallback(Callback callback, Span span, Tracer tracer,
+      Collection<SpanDecorator> spanDecorators) {
     this.callback = callback;
     this.span = span;
     this.tracer = tracer;

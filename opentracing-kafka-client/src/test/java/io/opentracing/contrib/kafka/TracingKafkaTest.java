@@ -26,15 +26,18 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
-
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -46,7 +49,10 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -305,7 +311,8 @@ public class TracingKafkaTest {
 
     producer.send(new ProducerRecord<>("messages", 1, "test"));
 
-    producer = createProducerWithDecorators(Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
+    producer = createProducerWithDecorators(
+        Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
 
     producer.send(new ProducerRecord<>("messages", 1, "test"));
 
@@ -418,7 +425,8 @@ public class TracingKafkaTest {
 
     executorService.execute(() -> {
       Consumer<Integer, String> consumer =
-          createConsumerWithDecorators(Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
+          createConsumerWithDecorators(
+              Arrays.asList(SpanDecorator.STANDARD_TAGS, createDecorator()));
 
       while (latch.getCount() > 0) {
         ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
@@ -499,7 +507,8 @@ public class TracingKafkaTest {
     executorService.execute(() -> {
       BiFunction<String, ConsumerRecord, String> operationNameProvider =
           (operationName, consumerRecord) -> createSpanNameProvider();
-      Consumer<Integer, String> consumer = createConsumerWithSpanNameProvider(operationNameProvider);
+      Consumer<Integer, String> consumer = createConsumerWithSpanNameProvider(
+          operationNameProvider);
 
       while (latch.getCount() > 0) {
         ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(100));
@@ -592,7 +601,8 @@ public class TracingKafkaTest {
     return new TracingKafkaProducer<>(createProducer(), mockTracer, producerSpanNameProvider);
   }
 
-  private Consumer<Integer, String> createConsumerWithDecorators(Collection<SpanDecorator> spanDecorators) {
+  private Consumer<Integer, String> createConsumerWithDecorators(
+      Collection<SpanDecorator> spanDecorators) {
     Map<String, Object> consumerProps = KafkaTestUtils
         .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
     consumerProps.put("auto.offset.reset", "earliest");
@@ -609,7 +619,8 @@ public class TracingKafkaTest {
     return tracingKafkaConsumer;
   }
 
-  private Consumer<Integer, String> createConsumerWithSpanNameProvider(BiFunction<String, ConsumerRecord, String> spanNameProvider) {
+  private Consumer<Integer, String> createConsumerWithSpanNameProvider(
+      BiFunction<String, ConsumerRecord, String> spanNameProvider) {
     Map<String, Object> consumerProps = KafkaTestUtils
         .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
     consumerProps.put("auto.offset.reset", "earliest");
@@ -618,7 +629,8 @@ public class TracingKafkaTest {
         new TracingKafkaConsumerBuilder(kafkaConsumer, mockTracer);
 
     if (spanNameProvider != null) {
-      tracingKafkaConsumerBuilder = tracingKafkaConsumerBuilder.withSpanNameProvider(spanNameProvider);
+      tracingKafkaConsumerBuilder = tracingKafkaConsumerBuilder
+          .withSpanNameProvider(spanNameProvider);
     }
     TracingKafkaConsumer tracingKafkaConsumer = tracingKafkaConsumerBuilder.build();
     tracingKafkaConsumer.subscribe(Collections.singletonList("messages"));
@@ -626,7 +638,8 @@ public class TracingKafkaTest {
     return tracingKafkaConsumer;
   }
 
-  private Producer<Integer, String> createProducerWithDecorators(Collection<SpanDecorator> spanDecorators) {
+  private Producer<Integer, String> createProducerWithDecorators(
+      Collection<SpanDecorator> spanDecorators) {
     Map<String, Object> senderProps = KafkaTestUtils
         .producerProps(embeddedKafka.getEmbeddedKafka());
     KafkaProducer kafkaProducer = new KafkaProducer<>(senderProps);
@@ -639,14 +652,16 @@ public class TracingKafkaTest {
     return tracingKafkaProducerBuilder.build();
   }
 
-  private Producer<Integer, String> createProducerWithSpanNameProvider(BiFunction<String, ProducerRecord, String> spanNameProvider) {
+  private Producer<Integer, String> createProducerWithSpanNameProvider(
+      BiFunction<String, ProducerRecord, String> spanNameProvider) {
     Map<String, Object> senderProps = KafkaTestUtils
         .producerProps(embeddedKafka.getEmbeddedKafka());
     KafkaProducer kafkaProducer = new KafkaProducer<>(senderProps);
     TracingKafkaProducerBuilder tracingKafkaProducerBuilder =
         new TracingKafkaProducerBuilder<>(kafkaProducer, mockTracer);
     if (spanNameProvider != null) {
-      tracingKafkaProducerBuilder = tracingKafkaProducerBuilder.withSpanNameProvider(spanNameProvider);
+      tracingKafkaProducerBuilder = tracingKafkaProducerBuilder
+          .withSpanNameProvider(spanNameProvider);
     }
 
     return tracingKafkaProducerBuilder.build();
@@ -715,7 +730,8 @@ public class TracingKafkaTest {
         assertTrue(offset >= 0L);
         assertEquals("messages", mockSpan.tags().get("topic"));
       }
-      assertEquals(StandardSpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
+      assertEquals(StandardSpanDecorator.COMPONENT_NAME,
+          mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(0, mockSpan.generatedErrors().size());
       assertTrue(operationName.equals(TracingKafkaUtils.TO_PREFIX + "messages")
           || operationName.equals(TracingKafkaUtils.FROM_PREFIX + "messages"));

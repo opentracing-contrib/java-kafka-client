@@ -15,12 +15,10 @@ package io.opentracing.contrib.kafka;
 
 import io.opentracing.Span;
 import io.opentracing.tag.Tags;
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 

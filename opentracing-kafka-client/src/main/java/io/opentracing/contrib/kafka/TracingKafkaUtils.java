@@ -19,11 +19,9 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.function.BiFunction;
-
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
@@ -44,41 +42,41 @@ public class TracingKafkaUtils {
    */
   public static SpanContext extractSpanContext(Headers headers, Tracer tracer) {
     return tracer
-            .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers));
+        .extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers));
   }
 
   /**
    * Inject Span Context to record headers
    *
    * @param spanContext Span Context
-   * @param headers     record headers
+   * @param headers record headers
    */
   static void inject(SpanContext spanContext, Headers headers,
-                     Tracer tracer) {
+      Tracer tracer) {
     tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
-            new HeadersMapInjectAdapter(headers));
+        new HeadersMapInjectAdapter(headers));
   }
 
   public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
     return buildAndInjectSpan(record, tracer, ClientSpanNameProvider.PRODUCER_OPERATION_NAME, null,
-            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+        Collections.singletonList(SpanDecorator.STANDARD_TAGS));
   }
 
   public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
-                                               BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
-                                               SpanContext parent) {
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
+      SpanContext parent) {
     return buildAndInjectSpan(record, tracer, producerSpanNameProvider, parent,
-            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+        Collections.singletonList(SpanDecorator.STANDARD_TAGS));
   }
 
   static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
-                                        BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
-                                        SpanContext parent, Collection<SpanDecorator> spanDecorators) {
+      BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
+      SpanContext parent, Collection<SpanDecorator> spanDecorators) {
     String producerOper =
-            TO_PREFIX + record.topic(); // <======== It provides better readability in the UI
+        TO_PREFIX + record.topic(); // <======== It provides better readability in the UI
     Tracer.SpanBuilder spanBuilder = tracer
-            .buildSpan(producerSpanNameProvider.apply(producerOper, record))
-            .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
+        .buildSpan(producerSpanNameProvider.apply(producerOper, record))
+        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER);
 
     SpanContext spanContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
 
@@ -106,24 +104,24 @@ public class TracingKafkaUtils {
 
   public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer) {
     buildAndFinishChildSpan(record, tracer, ClientSpanNameProvider.CONSUMER_OPERATION_NAME,
-            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+        Collections.singletonList(SpanDecorator.STANDARD_TAGS));
   }
 
   public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
-                                                    BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider,
-            Collections.singletonList(SpanDecorator.STANDARD_TAGS));
+        Collections.singletonList(SpanDecorator.STANDARD_TAGS));
   }
 
   static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
-                                             BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
-                                             Collection<SpanDecorator> spanDecorators) {
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
+      Collection<SpanDecorator> spanDecorators) {
     SpanContext parentContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
     String consumerOper =
-            FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
+        FROM_PREFIX + record.topic(); // <====== It provides better readability in the UI
     Tracer.SpanBuilder spanBuilder = tracer
-            .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
-            .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
+        .buildSpan(consumerSpanNameProvider.apply(consumerOper, record))
+        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER);
 
     if (parentContext != null) {
       spanBuilder.addReference(References.FOLLOWS_FROM, parentContext);
