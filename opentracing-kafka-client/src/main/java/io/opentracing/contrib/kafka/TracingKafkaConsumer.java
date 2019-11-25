@@ -15,14 +15,13 @@ package io.opentracing.contrib.kafka;
 
 
 import io.opentracing.Tracer;
+
 import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -35,26 +34,40 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import static io.opentracing.contrib.kafka.SpanDecorator.STANDARD_TAGS;
+
 public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   private final Tracer tracer;
   private final Consumer<K, V> consumer;
+  private Collection<SpanDecorator> spanDecorators;
   private final BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider;
 
+  TracingKafkaConsumer(Consumer<K, V> consumer, Tracer tracer, Collection<SpanDecorator> spanDecorators,
+                       BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+    this.consumer = consumer;
+    this.tracer = tracer;
+    this.spanDecorators = Collections.unmodifiableCollection(spanDecorators);
+    this.consumerSpanNameProvider = (consumerSpanNameProvider == null)
+            ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
+            : consumerSpanNameProvider;
+  }
 
   public TracingKafkaConsumer(Consumer<K, V> consumer, Tracer tracer) {
     this.consumer = consumer;
     this.tracer = tracer;
+    this.spanDecorators = Collections.singletonList(STANDARD_TAGS);
     this.consumerSpanNameProvider = ClientSpanNameProvider.CONSUMER_OPERATION_NAME;
   }
 
   public TracingKafkaConsumer(Consumer<K, V> consumer, Tracer tracer,
-      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+                              BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     this.consumer = consumer;
     this.tracer = tracer;
+    this.spanDecorators = Collections.singletonList(STANDARD_TAGS);
     this.consumerSpanNameProvider = (consumerSpanNameProvider == null)
-        ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
-        : consumerSpanNameProvider;
+            ? ClientSpanNameProvider.CONSUMER_OPERATION_NAME
+            : consumerSpanNameProvider;
   }
 
   @Override
@@ -103,7 +116,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     ConsumerRecords<K, V> records = consumer.poll(timeout);
 
     for (ConsumerRecord<K, V> record : records) {
-      TracingKafkaUtils.buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider);
+      TracingKafkaUtils.buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider, spanDecorators);
     }
 
     return records;
@@ -114,7 +127,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
     ConsumerRecords<K, V> records = consumer.poll(duration);
 
     for (ConsumerRecord<K, V> record : records) {
-      TracingKafkaUtils.buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider);
+      TracingKafkaUtils.buildAndFinishChildSpan(record, tracer, consumerSpanNameProvider, spanDecorators);
     }
 
     return records;
@@ -152,7 +165,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public void commitAsync(Map<TopicPartition, OffsetAndMetadata> offsets,
-      OffsetCommitCallback callback) {
+                          OffsetCommitCallback callback) {
     consumer.commitAsync(offsets, callback);
   }
 
@@ -238,13 +251,13 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
-      Map<TopicPartition, Long> timestampsToSearch) {
+          Map<TopicPartition, Long> timestampsToSearch) {
     return consumer.offsetsForTimes(timestampsToSearch);
   }
 
   @Override
   public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> map,
-      Duration duration) {
+                                                                 Duration duration) {
     return consumer.offsetsForTimes(map, duration);
   }
 
@@ -255,7 +268,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> collection,
-      Duration duration) {
+                                                    Duration duration) {
     return consumer.beginningOffsets(collection, duration);
   }
 
@@ -266,7 +279,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
 
   @Override
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> collection,
-      Duration duration) {
+                                              Duration duration) {
     return consumer.endOffsets(collection, duration);
   }
 
