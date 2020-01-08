@@ -13,9 +13,14 @@
  */
 package io.opentracing.contrib.kafka.spring;
 
+import static io.opentracing.contrib.kafka.SpanDecorator.STANDARD_TAGS;
+
 import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
-import io.opentracing.contrib.kafka.TracingKafkaProducer;
+import io.opentracing.contrib.kafka.SpanDecorator;
+import io.opentracing.contrib.kafka.TracingKafkaProducerBuilder;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.function.BiFunction;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -26,18 +31,30 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
 
   private final ProducerFactory<K, V> producerFactory;
   private final Tracer tracer;
+  private final Collection<SpanDecorator> spanDecorators;
   private final BiFunction<String, ProducerRecord, String> producerSpanNameProvider;
 
   public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer) {
-    this.producerFactory = producerFactory;
-    this.tracer = tracer;
-    this.producerSpanNameProvider = ClientSpanNameProvider.PRODUCER_OPERATION_NAME;
+    this(producerFactory, tracer, null, null);
+  }
+
+  public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer,
+      Collection<SpanDecorator> spanDecorators) {
+    this(producerFactory, tracer, spanDecorators, null);
   }
 
   public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer,
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
+    this(producerFactory, tracer, null, producerSpanNameProvider);
+  }
+
+  public TracingProducerFactory(ProducerFactory<K, V> producerFactory, Tracer tracer,
+      Collection<SpanDecorator> spanDecorators, BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this.producerFactory = producerFactory;
     this.tracer = tracer;
+    this.spanDecorators = (spanDecorators == null)
+        ? Collections.singletonList(STANDARD_TAGS)
+        : spanDecorators;
     this.producerSpanNameProvider = (producerSpanNameProvider == null)
         ? ClientSpanNameProvider.PRODUCER_OPERATION_NAME
         : producerSpanNameProvider;
@@ -45,14 +62,14 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
 
   @Override
   public Producer<K, V> createProducer() {
-    return new TracingKafkaProducer<>(producerFactory.createProducer(), tracer,
-        producerSpanNameProvider);
+    return new TracingKafkaProducerBuilder<>(producerFactory.createProducer(), tracer).withDecorators(spanDecorators)
+        .withSpanNameProvider(producerSpanNameProvider).build();
   }
 
   @Override
   public Producer<K, V> createProducer(String txIdPrefix) {
-    return new TracingKafkaProducer<>(producerFactory.createProducer(txIdPrefix), tracer,
-        producerSpanNameProvider);
+    return new TracingKafkaProducerBuilder<>(producerFactory.createProducer(txIdPrefix), tracer)
+        .withDecorators(spanDecorators).withSpanNameProvider(producerSpanNameProvider).build();
   }
 
   @Override
