@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 The OpenTracing Authors
+ * Copyright 2017-2020 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -51,7 +51,8 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
   }
 
   public TracingConsumerFactory(ConsumerFactory<K, V> consumerFactory, Tracer tracer,
-      Collection<SpanDecorator> spanDecorators, BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
+      Collection<SpanDecorator> spanDecorators,
+      BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider) {
     this.tracer = tracer;
     this.consumerFactory = consumerFactory;
     this.spanDecorators = (spanDecorators == null)
@@ -76,14 +77,18 @@ public class TracingConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
   @Override
   public Consumer<K, V> createConsumer(String groupId, String clientIdSuffix) {
-    return new TracingKafkaConsumerBuilder<>(consumerFactory.createConsumer(groupId, clientIdSuffix), tracer)
+    return new TracingKafkaConsumerBuilder<>(
+        consumerFactory.createConsumer(groupId, clientIdSuffix), tracer)
         .withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider).build();
   }
 
   @Override
-  public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix) {
-    return new TracingKafkaConsumerBuilder<>(consumerFactory.createConsumer(groupId, clientIdPrefix, clientIdSuffix),
-        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider).build();
+  public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix,
+      String clientIdSuffix) {
+    return new TracingKafkaConsumerBuilder<>(
+        consumerFactory.createConsumer(groupId, clientIdPrefix, clientIdSuffix),
+        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider)
+        .build();
   }
 
   @Override

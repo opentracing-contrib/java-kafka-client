@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 The OpenTracing Authors
+ * Copyright 2017-2020 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -54,8 +54,8 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
     this(GlobalTracer.get(), null, null, null);
   }
 
-  public TracingKafkaClientSupplier(Tracer tracer,Collection<SpanDecorator> spanDecorators) {
-    this(tracer, spanDecorators,null, null);
+  public TracingKafkaClientSupplier(Tracer tracer, Collection<SpanDecorator> spanDecorators) {
+    this(tracer, spanDecorators, null, null);
   }
 
   public TracingKafkaClientSupplier(Tracer tracer,
@@ -99,27 +99,31 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
   public Producer<byte[], byte[]> getProducer(Map<String, Object> config) {
     return new TracingKafkaProducerBuilder<>(
         new KafkaProducer<>(config, new ByteArraySerializer(), new ByteArraySerializer()),
-        tracer).withDecorators(spanDecorators).withSpanNameProvider(producerSpanNameProvider).build();
+        tracer).withDecorators(spanDecorators).withSpanNameProvider(producerSpanNameProvider)
+        .build();
   }
 
   @Override
   public Consumer<byte[], byte[]> getConsumer(Map<String, Object> config) {
     return new TracingKafkaConsumerBuilder<>(
         new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer()),
-        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider).build();
+        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider)
+        .build();
   }
 
   @Override
   public Consumer<byte[], byte[]> getRestoreConsumer(Map<String, Object> config) {
     return new TracingKafkaConsumerBuilder<>(
         new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer()),
-        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider).build();
+        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider)
+        .build();
   }
 
   @Override
   public Consumer<byte[], byte[]> getGlobalConsumer(Map<String, Object> config) {
     return new TracingKafkaConsumerBuilder<>(
         new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer()),
-        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider).build();
+        tracer).withDecorators(spanDecorators).withSpanNameProvider(consumerSpanNameProvider)
+        .build();
   }
 }
