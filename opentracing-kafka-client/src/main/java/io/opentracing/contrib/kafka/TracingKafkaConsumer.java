@@ -215,6 +215,17 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions) {
+    return consumer.committed(partitions);
+  }
+
+  @Override
+  public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions,
+      final Duration timeout) {
+    return consumer.committed(partitions, timeout);
+  }
+
+  @Override
   public Map<MetricName, ? extends Metric> metrics() {
     return consumer.metrics();
   }
