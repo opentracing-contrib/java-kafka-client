@@ -728,7 +728,7 @@ public class TracingKafkaTest {
         assertEquals(0, mockSpan.tags().get("partition"));
         long offset = (Long) mockSpan.tags().get("offset");
         assertTrue(offset >= 0L);
-        assertEquals("messages", mockSpan.tags().get("topic"));
+        assertEquals("messages", mockSpan.tags().get(Tags.MESSAGE_BUS_DESTINATION.getKey()));
       }
       assertEquals(StandardSpanDecorator.COMPONENT_NAME,
           mockSpan.tags().get(Tags.COMPONENT.getKey()));

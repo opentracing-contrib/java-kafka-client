@@ -117,7 +117,7 @@ public class TracingKafkaStreamsTest {
         assertEquals(0, mockSpan.tags().get("partition"));
         long offset = (Long) mockSpan.tags().get("offset");
         assertTrue(offset == 0L || offset == 1L || offset == 2L);
-        String topicName = (String) mockSpan.tags().get("topic");
+        String topicName = (String) mockSpan.tags().get(Tags.MESSAGE_BUS_DESTINATION.getKey());
         assertTrue(topicName.equals("stream-out") || topicName.equals("stream-test"));
       }
       assertEquals("java-kafka", mockSpan.tags().get(Tags.COMPONENT.getKey()));

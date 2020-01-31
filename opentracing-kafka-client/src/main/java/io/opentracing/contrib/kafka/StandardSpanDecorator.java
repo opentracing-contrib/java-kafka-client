@@ -37,8 +37,8 @@ class StandardSpanDecorator implements SpanDecorator {
 
   public <K, V> void onResponse(ConsumerRecord<K, V> record, Span span) {
     setCommonTags(span);
+    Tags.MESSAGE_BUS_DESTINATION.set(span, record.topic());
     span.setTag("partition", record.partition());
-    span.setTag("topic", record.topic());
     span.setTag("offset", record.offset());
   }
 
