@@ -24,7 +24,7 @@ public class HeadersMapInjectAdapter implements TextMap {
 
   private final Headers headers;
 
-  HeadersMapInjectAdapter(Headers headers) {
+  public HeadersMapInjectAdapter(Headers headers) {
     this.headers = headers;
   }
 

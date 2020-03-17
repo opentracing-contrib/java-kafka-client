@@ -51,10 +51,9 @@ public class TracingKafkaUtils {
    * @param spanContext Span Context
    * @param headers record headers
    */
-  static void inject(SpanContext spanContext, Headers headers,
+  public static void inject(SpanContext spanContext, Headers headers,
       Tracer tracer) {
-    tracer.inject(spanContext, Format.Builtin.TEXT_MAP,
-        new HeadersMapInjectAdapter(headers));
+    tracer.inject(spanContext, Format.Builtin.TEXT_MAP, new HeadersMapInjectAdapter(headers));
   }
 
   public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer) {
@@ -136,6 +135,6 @@ public class TracingKafkaUtils {
     span.finish();
 
     // Inject created span context into record headers for extraction by client to continue span chain
-    TracingKafkaUtils.inject(span.context(), record.headers(), tracer);
+    inject(span.context(), record.headers(), tracer);
   }
 }
