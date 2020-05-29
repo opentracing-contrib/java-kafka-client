@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -297,6 +298,11 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> collection,
       Duration duration) {
     return consumer.endOffsets(collection, duration);
+  }
+
+  @Override
+  public ConsumerGroupMetadata groupMetadata() {
+    return consumer.groupMetadata();
   }
 
   @Override
