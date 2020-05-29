@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -88,6 +90,12 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
       String consumerGroupId)
       throws ProducerFencedException {
     producer.sendOffsetsToTransaction(offsets, consumerGroupId);
+  }
+
+  @Override
+  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+      ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
+    producer.sendOffsetsToTransaction(offsets, groupMetadata);
   }
 
   @Override
