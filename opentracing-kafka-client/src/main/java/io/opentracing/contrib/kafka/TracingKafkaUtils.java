@@ -68,7 +68,7 @@ public class TracingKafkaUtils {
         Collections.singletonList(SpanDecorator.STANDARD_TAGS));
   }
 
-  static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
+  public static <K, V> Span buildAndInjectSpan(ProducerRecord<K, V> record, Tracer tracer,
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider,
       SpanContext parent, Collection<SpanDecorator> spanDecorators) {
     String producerOper =
@@ -112,7 +112,7 @@ public class TracingKafkaUtils {
         Collections.singletonList(SpanDecorator.STANDARD_TAGS));
   }
 
-  static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
+  public static <K, V> void buildAndFinishChildSpan(ConsumerRecord<K, V> record, Tracer tracer,
       BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
       Collection<SpanDecorator> spanDecorators) {
     SpanContext parentContext = TracingKafkaUtils.extractSpanContext(record.headers(), tracer);
