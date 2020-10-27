@@ -67,8 +67,8 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.33.0</opentracing.version>
-    <kafka.version>2.5.0</kafka.version>
-    <spring.kafka.version>2.5.0.RELEASE</spring.kafka.version>
+    <kafka.version>2.6.0</kafka.version>
+    <spring.kafka.version>2.6.1</spring.kafka.version>
     <spring.version>5.2.7.RELEASE</spring.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
@@ -130,19 +130,23 @@
           <groupId>org.apache.kafka</groupId>
           <artifactId>kafka_2.11</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.kafka</groupId>
+          <artifactId>kafka_2.12</artifactId>
+        </exclusion>
       </exclusions>
-
     </dependency>
+
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.12</artifactId>
+      <artifactId>kafka_2.13</artifactId>
       <version>${kafka.version}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.12</artifactId>
+      <artifactId>kafka_2.13</artifactId>
       <version>${kafka.version}</version>
       <classifier>test</classifier>
       <scope>test</scope>
