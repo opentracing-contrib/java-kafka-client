@@ -13,15 +13,10 @@
  */
 package io.opentracing.contrib.kafka.spring;
 
-import static org.awaitility.Awaitility.await;
-import static org.hamcrest.core.IsEqual.equalTo;
-import static org.junit.Assert.assertEquals;
-
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -31,6 +26,15 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = {TestConfiguration.class})
@@ -54,13 +58,35 @@ public class TracingSpringKafkaTest {
   public void test() {
     kafkaTemplate.send("spring", "message");
 
-    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), greaterThanOrEqualTo(3));
 
     List<MockSpan> spans = mockTracer.finishedSpans();
-    assertEquals(2, spans.size());
+    assertThat(spans, contains(
+        new SpanMatcher("To_spring"),
+        new SpanMatcher("From_spring"),
+        new SpanMatcher("KafkaListener_spring")));
   }
 
   private Callable<Integer> reportedSpansSize() {
     return () -> mockTracer.finishedSpans().size();
+  }
+
+  private static class SpanMatcher extends BaseMatcher<MockSpan> {
+
+    private final String operationName;
+
+    private SpanMatcher(String operationName) {
+      this.operationName = operationName;
+    }
+
+    @Override
+    public boolean matches(Object actual) {
+      return actual instanceof MockSpan && operationName.equals(((MockSpan) actual).operationName());
+    }
+
+    @Override
+    public void describeTo(Description description) {
+      description.appendText(operationName);
+    }
   }
 }

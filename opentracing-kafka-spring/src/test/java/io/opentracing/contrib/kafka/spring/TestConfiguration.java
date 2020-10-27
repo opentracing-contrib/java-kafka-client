@@ -13,13 +13,11 @@
  */
 package io.opentracing.contrib.kafka.spring;
 
-import static io.opentracing.contrib.kafka.spring.TracingSpringKafkaTest.embeddedKafka;
-
 import io.opentracing.mock.MockTracer;
-import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -29,9 +27,14 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
+import java.util.Map;
+
+import static io.opentracing.contrib.kafka.spring.TracingSpringKafkaTest.embeddedKafka;
+
 @Configuration
 @EnableKafka
 @ComponentScan
+@EnableAspectJAutoProxy
 public class TestConfiguration {
 
   @Bean
@@ -67,5 +70,10 @@ public class TestConfiguration {
   @Bean
   public KafkaTemplate<Integer, String> kafkaTemplate() {
     return new KafkaTemplate<>(producerFactory());
+  }
+
+  @Bean
+  public TracingKafkaAspect tracingKafkaAspect() {
+    return new TracingKafkaAspect(tracer());
   }
 }
