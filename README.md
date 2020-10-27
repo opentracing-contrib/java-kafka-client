@@ -208,6 +208,11 @@ public KafkaTemplate<Integer, String> kafkaTemplate() {
   return new KafkaTemplate<>(producerFactory());
 }
 
+// Use an aspect to decorate @KafkaListeners
+@Bean
+public TracingKafkaAspect tracingKafkaAspect() {
+  return new TracingKafkaAspect(tracer());
+}
 ```
 
 ##### Custom Span Names for Spring Kafka
