@@ -306,6 +306,11 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public void enforceRebalance() {
+    consumer.enforceRebalance();
+  }
+
+  @Override
   public void close() {
     consumer.close();
   }
