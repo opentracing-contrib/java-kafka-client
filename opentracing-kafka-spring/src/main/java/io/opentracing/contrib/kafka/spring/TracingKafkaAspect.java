@@ -24,8 +24,8 @@ import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
- * Wraps a {@link MessageListener} into a tracing proxy,
- * to support {@link org.springframework.kafka.annotation.KafkaListener} beans.
+ * Wraps a {@link MessageListener} into a tracing proxy, to support {@link
+ * org.springframework.kafka.annotation.KafkaListener} beans.
  * <p>
  * A port of Spring Sleuth implementation.
  */

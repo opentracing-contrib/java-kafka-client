@@ -13,8 +13,16 @@
  */
 package io.opentracing.contrib.kafka.spring;
 
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Before;
@@ -26,15 +34,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
-import static org.awaitility.Awaitility.await;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = {TestConfiguration.class})
@@ -81,7 +80,8 @@ public class TracingSpringKafkaTest {
 
     @Override
     public boolean matches(Object actual) {
-      return actual instanceof MockSpan && operationName.equals(((MockSpan) actual).operationName());
+      return actual instanceof MockSpan && operationName
+          .equals(((MockSpan) actual).operationName());
     }
 
     @Override

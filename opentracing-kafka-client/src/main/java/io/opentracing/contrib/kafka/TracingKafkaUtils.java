@@ -49,7 +49,7 @@ public class TracingKafkaUtils {
    * Inject Span Context to record headers
    *
    * @param spanContext Span Context
-   * @param headers record headers
+   * @param headers     record headers
    */
   public static void inject(SpanContext spanContext, Headers headers,
       Tracer tracer) {
