@@ -109,7 +109,8 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
 
   @Override
   public Producer<K, V> createNonTransactionalProducer() {
-    return producerFactory.createNonTransactionalProducer();
+    return new TracingKafkaProducerBuilder<>(producerFactory.createNonTransactionalProducer(), tracer)
+        .withDecorators(spanDecorators).withSpanNameProvider(producerSpanNameProvider).build();
   }
 
   @Override
