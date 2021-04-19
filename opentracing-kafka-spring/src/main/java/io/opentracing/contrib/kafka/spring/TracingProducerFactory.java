@@ -19,11 +19,17 @@ import io.opentracing.Tracer;
 import io.opentracing.contrib.kafka.ClientSpanNameProvider;
 import io.opentracing.contrib.kafka.SpanDecorator;
 import io.opentracing.contrib.kafka.TracingKafkaProducerBuilder;
+
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
+
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.Serializer;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.kafka.core.ProducerFactory;
 
@@ -99,5 +105,46 @@ public class TracingProducerFactory<K, V> implements ProducerFactory<K, V>, Disp
     if (producerFactory instanceof DisposableBean) {
       ((DisposableBean) producerFactory).destroy();
     }
+  }
+
+  @Override
+  public Producer<K, V> createNonTransactionalProducer() {
+    return new TracingKafkaProducerBuilder<>(producerFactory.createNonTransactionalProducer(), tracer)
+        .withDecorators(spanDecorators).withSpanNameProvider(producerSpanNameProvider).build();
+  }
+
+  @Override
+  public void reset() {
+    producerFactory.reset();
+  }
+
+  @Override
+  public Map<String, Object> getConfigurationProperties() {
+    return producerFactory.getConfigurationProperties();
+  }
+
+  @Override
+  public Supplier<Serializer<V>> getValueSerializerSupplier() {
+    return producerFactory.getValueSerializerSupplier();
+  }
+
+  @Override
+  public Supplier<Serializer<K>> getKeySerializerSupplier() {
+    return producerFactory.getKeySerializerSupplier();
+  }
+
+  @Override
+  public boolean isProducerPerThread() {
+    return producerFactory.isProducerPerThread();
+  }
+
+  @Override
+  public String getTransactionIdPrefix() {
+    return producerFactory.getTransactionIdPrefix();
+  }
+
+  @Override
+  public Duration getPhysicalCloseTimeout() {
+    return producerFactory.getPhysicalCloseTimeout();
   }
 }
