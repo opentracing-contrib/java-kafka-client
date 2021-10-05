@@ -10,7 +10,7 @@ Two solutions are provided:
 ## Requirements
 
 - Java 8
-- Kafka 2.2.0
+- Kafka 3.0.0
 
 ## Installation
 
