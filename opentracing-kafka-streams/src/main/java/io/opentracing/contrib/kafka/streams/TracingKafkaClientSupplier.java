@@ -25,6 +25,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.BiFunction;
+
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -87,6 +89,13 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
       BiFunction<String, ConsumerRecord, String> consumerSpanNameProvider,
       BiFunction<String, ProducerRecord, String> producerSpanNameProvider) {
     this(GlobalTracer.get(), null, consumerSpanNameProvider, producerSpanNameProvider);
+  }
+
+  // This method is required by Kafka Streams >=3.0
+  @Override
+  public Admin getAdmin(final Map<String, Object> config) {
+    // create a new client upon each call; but expect this call to be only triggered once so this should be fine
+    return Admin.create(config);
   }
 
   // This method is required by Kafka Streams >=1.1, and optional for Kafka Streams <1.1

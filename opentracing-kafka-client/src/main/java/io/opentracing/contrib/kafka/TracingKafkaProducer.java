@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -164,11 +163,6 @@ public class TracingKafkaProducer<K, V> implements Producer<K, V> {
   @Override
   public void close(Duration duration) {
     producer.close(duration);
-  }
-
-  @Override
-  public void close(long timeout, TimeUnit timeUnit) {
-    producer.close(timeout, timeUnit);
   }
 
 }
