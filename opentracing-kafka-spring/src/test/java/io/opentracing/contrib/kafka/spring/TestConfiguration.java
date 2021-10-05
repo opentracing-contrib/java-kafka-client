@@ -13,10 +13,19 @@
  */
 package io.opentracing.contrib.kafka.spring;
 
-import static io.opentracing.contrib.kafka.spring.TracingSpringKafkaTest.embeddedKafka;
+import static io.opentracing.contrib.kafka.spring.TracingSpringKafkaTest.cluster;
 
 import io.opentracing.mock.MockTracer;
+
+import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -28,7 +37,6 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 @Configuration
 @EnableKafka
@@ -52,9 +60,7 @@ public class TestConfiguration {
 
   @Bean
   public ConsumerFactory<Integer, String> consumerFactory() {
-    final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
-    consumerProps.put("auto.offset.reset", "earliest");
+    final Map<String, Object> consumerProps = consumerProps("sampleRawConsumer", true);
 
     return new TracingConsumerFactory<>(new DefaultKafkaConsumerFactory<>(consumerProps), tracer());
   }
@@ -62,8 +68,7 @@ public class TestConfiguration {
 
   @Bean
   public ProducerFactory<Integer, String> producerFactory() {
-    return new TracingProducerFactory<>(new DefaultKafkaProducerFactory<>(
-        KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka())), tracer());
+    return new TracingProducerFactory<>(new DefaultKafkaProducerFactory<>(producerProps()), tracer());
   }
 
   @Bean
@@ -74,5 +79,34 @@ public class TestConfiguration {
   @Bean
   public TracingKafkaAspect tracingKafkaAspect() {
     return new TracingKafkaAspect(tracer());
+  }
+
+  private Map<String, Object> producerProps() {
+    final Map<String, Object> producerProps = new HashMap<>();
+
+    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.bootstrapServers());
+    producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
+    producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, "16384");
+    producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+    producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");
+    producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+    producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+    return producerProps;
+  }
+
+  private Map<String, Object> consumerProps(String consumerGroup, boolean autoCommit)  {
+    final Map<String, Object> consumerProps = new HashMap<>();
+
+    consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.bootstrapServers());
+    consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
+    consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
+    consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, autoCommit);
+    consumerProps.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "10");
+    consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "60000");
+    consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+    return consumerProps;
   }
 }

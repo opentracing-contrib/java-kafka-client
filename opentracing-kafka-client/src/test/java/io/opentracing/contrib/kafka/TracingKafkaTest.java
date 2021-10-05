@@ -13,7 +13,6 @@
  */
 package io.opentracing.contrib.kafka;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -26,11 +25,14 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
+
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -49,22 +51,33 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.streams.integration.utils.EmbeddedKafkaCluster;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 public class TracingKafkaTest {
 
-  @ClassRule
-  public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(2, true, 2, "messages");
+  private static EmbeddedKafkaCluster cluster;
   private static final MockTracer mockTracer = new MockTracer();
 
   @BeforeClass
-  public static void init() {
+  public static void init() throws InterruptedException, IOException {
     GlobalTracer.registerIfAbsent(mockTracer);
+
+    cluster = new EmbeddedKafkaCluster(2);
+    cluster.start();
+    cluster.createTopic("messages", 2, 2);
+  }
+
+  @AfterClass
+  public static void shutdown() {
+    cluster.stop();
   }
 
   @Before
@@ -74,10 +87,8 @@ public class TracingKafkaTest {
 
   @Test
   public void with_interceptors() throws Exception {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
-    senderProps
-        .put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, TracingProducerInterceptor.class.getName());
+    Map<String, Object> senderProps = producerProps();
+    senderProps.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, TracingProducerInterceptor.class.getName());
     KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
 
     producer.send(new ProducerRecord<>("messages", 1, "test"));
@@ -246,10 +257,6 @@ public class TracingKafkaTest {
     ProducerRecord<Integer, String> record = new ProducerRecord<>("messages", "test");
     producer.send(record);
 
-    final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
-    consumerProps.put("auto.offset.reset", "earliest");
-
     final CountDownLatch latch = new CountDownLatch(1);
     createConsumer(latch, null, false, null);
 
@@ -271,9 +278,7 @@ public class TracingKafkaTest {
 
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
-    consumerProps.put("auto.offset.reset", "earliest");
+    final Map<String, Object> consumerProps = consumerProps("sampleRawConsumer", true);
 
     executorService.execute(() -> {
       KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
@@ -591,8 +596,7 @@ public class TracingKafkaTest {
   }
 
   private Producer<Integer, String> createProducer() {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
+    Map<String, Object> senderProps = producerProps();
     return new KafkaProducer<>(senderProps);
   }
 
@@ -603,9 +607,7 @@ public class TracingKafkaTest {
 
   private Consumer<Integer, String> createConsumerWithDecorators(
       Collection<SpanDecorator> spanDecorators) {
-    Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
-    consumerProps.put("auto.offset.reset", "earliest");
+    Map<String, Object> consumerProps = consumerProps("sampleRawConsumer", true);
     KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
     TracingKafkaConsumerBuilder tracingKafkaConsumerBuilder =
         new TracingKafkaConsumerBuilder(kafkaConsumer, mockTracer);
@@ -621,9 +623,7 @@ public class TracingKafkaTest {
 
   private Consumer<Integer, String> createConsumerWithSpanNameProvider(
       BiFunction<String, ConsumerRecord, String> spanNameProvider) {
-    Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
-    consumerProps.put("auto.offset.reset", "earliest");
+    Map<String, Object> consumerProps = consumerProps("sampleRawConsumer", true);
     KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProps);
     TracingKafkaConsumerBuilder tracingKafkaConsumerBuilder =
         new TracingKafkaConsumerBuilder(kafkaConsumer, mockTracer);
@@ -640,8 +640,7 @@ public class TracingKafkaTest {
 
   private Producer<Integer, String> createProducerWithDecorators(
       Collection<SpanDecorator> spanDecorators) {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
+    Map<String, Object> senderProps = producerProps();
     KafkaProducer kafkaProducer = new KafkaProducer<>(senderProps);
     TracingKafkaProducerBuilder tracingKafkaProducerBuilder =
         new TracingKafkaProducerBuilder<>(kafkaProducer, mockTracer);
@@ -654,8 +653,7 @@ public class TracingKafkaTest {
 
   private Producer<Integer, String> createProducerWithSpanNameProvider(
       BiFunction<String, ProducerRecord, String> spanNameProvider) {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
+    Map<String, Object> senderProps = producerProps();
     KafkaProducer kafkaProducer = new KafkaProducer<>(senderProps);
     TracingKafkaProducerBuilder tracingKafkaProducerBuilder =
         new TracingKafkaProducerBuilder<>(kafkaProducer, mockTracer);
@@ -674,9 +672,7 @@ public class TracingKafkaTest {
 
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    final Map<String, Object> consumerProps = KafkaTestUtils
-        .consumerProps("sampleRawConsumer", "false", embeddedKafka.getEmbeddedKafka());
-    consumerProps.put("auto.offset.reset", "earliest");
+    final Map<String, Object> consumerProps = consumerProps("sampleRawConsumer", true);
     if (withInterceptor) {
       consumerProps.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
           TracingConsumerInterceptor.class.getName());
@@ -764,4 +760,32 @@ public class TracingKafkaTest {
     return found;
   }
 
+  private Map<String, Object> producerProps() {
+    final Map<String, Object> producerProps = new HashMap<>();
+
+    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.bootstrapServers());
+    producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
+    producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, "16384");
+    producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+    producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");
+    producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+    producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+    return producerProps;
+  }
+
+  private Map<String, Object> consumerProps(String consumerGroup, boolean autoCommit)  {
+    final Map<String, Object> consumerProps = new HashMap<>();
+
+    consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.bootstrapServers());
+    consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
+    consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
+    consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, autoCommit);
+    consumerProps.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "10");
+    consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "60000");
+    consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+    return consumerProps;
+  }
 }

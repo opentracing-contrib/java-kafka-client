@@ -24,34 +24,51 @@ import io.opentracing.contrib.kafka.TracingKafkaUtils;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
+
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.integration.utils.EmbeddedKafkaCluster;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
+import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.ClassRule;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 public class TracingKafkaStreamsTest {
 
-  @ClassRule
-  public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(2, true, 2, "stream-test");
-
+  private static EmbeddedKafkaCluster cluster;
   private MockTracer mockTracer = new MockTracer();
+
+  @BeforeClass
+  public static void init() throws InterruptedException, IOException {
+    cluster = new EmbeddedKafkaCluster(2);
+    cluster.start();
+    cluster.createTopic("stream-test", 2, 2);
+  }
+
+  @AfterClass
+  public static void shutdown() {
+    cluster.stop();
+  }
 
   @Before
   public void before() {
@@ -60,8 +77,7 @@ public class TracingKafkaStreamsTest {
 
   @Test
   public void test() {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
+    Map<String, Object> senderProps = producerProps();
 
     Properties config = new Properties();
     config.put(StreamsConfig.APPLICATION_ID_CONFIG, "stream-app");
@@ -99,8 +115,7 @@ public class TracingKafkaStreamsTest {
   }
 
   private Producer<Integer, String> createProducer() {
-    Map<String, Object> senderProps = KafkaTestUtils
-        .producerProps(embeddedKafka.getEmbeddedKafka());
+    Map<String, Object> senderProps = producerProps();
     KafkaProducer<Integer, String> kafkaProducer = new KafkaProducer<>(senderProps);
     return new TracingKafkaProducer<>(kafkaProducer, mockTracer);
   }
@@ -132,4 +147,19 @@ public class TracingKafkaStreamsTest {
   private Callable<Integer> reportedSpansSize() {
     return () -> mockTracer.finishedSpans().size();
   }
+
+  private Map<String, Object> producerProps() {
+    final Map<String, Object> producerProps = new HashMap<>();
+
+    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.bootstrapServers());
+    producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
+    producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, "16384");
+    producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+    producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");
+    producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+    producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+    return producerProps;
+  }
+
 }

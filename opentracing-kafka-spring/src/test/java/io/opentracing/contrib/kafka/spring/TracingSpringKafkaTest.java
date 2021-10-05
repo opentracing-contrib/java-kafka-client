@@ -20,12 +20,18 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.kafka.streams.integration.utils.EmbeddedKafkaCluster;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,14 +45,25 @@ import org.springframework.test.context.junit4.SpringRunner;
 @ContextConfiguration(classes = {TestConfiguration.class})
 public class TracingSpringKafkaTest {
 
-  @ClassRule
-  public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(2, true, 2, "spring");
-
   @Autowired
   private MockTracer mockTracer;
 
   @Autowired
   private KafkaTemplate<Integer, String> kafkaTemplate;
+
+  public static EmbeddedKafkaCluster cluster;
+
+  @BeforeClass
+  public static void init() throws InterruptedException, IOException {
+    cluster = new EmbeddedKafkaCluster(2);
+    cluster.start();
+    cluster.createTopic("spring", 2, 2);
+  }
+
+  @AfterClass
+  public static void shutdown() {
+    cluster.stop();
+  }
 
   @Before
   public void before() {
