@@ -20,11 +20,13 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -213,6 +215,16 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public Map<TopicPartition, OffsetAndMetadata> committed(final Set<TopicPartition> set) {
+    return consumer.committed(set);
+  }
+
+  @Override
+  public Map<TopicPartition, OffsetAndMetadata> committed(final Set<TopicPartition> set, final Duration duration) {
+    return consumer.committed(set, duration);
+  }
+
+  @Override
   public Map<MetricName, ? extends Metric> metrics() {
     return consumer.metrics();
   }
@@ -287,14 +299,28 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
-  public void close() {
-    consumer.close();
+  public OptionalLong currentLag(final TopicPartition topicPartition) {
+    return consumer.currentLag(topicPartition);
   }
 
   @Override
-  @Deprecated
-  public void close(long l, TimeUnit timeUnit) {
-    consumer.close(l, timeUnit);
+  public ConsumerGroupMetadata groupMetadata() {
+    return consumer.groupMetadata();
+  }
+
+  @Override
+  public void enforceRebalance() {
+    consumer.enforceRebalance();
+  }
+
+  @Override
+  public void enforceRebalance(final String s) {
+    consumer.enforceRebalance(s);
+  }
+
+  @Override
+  public void close() {
+    consumer.close();
   }
 
   @Override

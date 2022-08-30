@@ -20,6 +20,8 @@ import io.opentracing.contrib.kafka.TracingKafkaProducer;
 import io.opentracing.util.GlobalTracer;
 import java.util.Map;
 import java.util.function.BiFunction;
+
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -75,6 +77,11 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
   public AdminClient getAdminClient(final Map<String, Object> config) {
     // create a new client upon each call; but expect this call to be only triggered once so this should be fine
     return AdminClient.create(config);
+  }
+
+  @Override
+  public Admin getAdmin(final Map<String, Object> config) {
+    return this.getAdminClient(config);
   }
 
   @Override
