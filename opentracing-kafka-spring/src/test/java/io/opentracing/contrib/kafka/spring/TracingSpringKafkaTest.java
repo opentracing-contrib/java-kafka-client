@@ -60,9 +60,10 @@ public class TracingSpringKafkaTest {
     await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), greaterThanOrEqualTo(3));
 
     List<MockSpan> spans = mockTracer.finishedSpans();
+    spans.forEach(s -> System.out.println("Span Operation: " + s.operationName()));
     assertThat(spans, contains(
-        new SpanMatcher("To_spring"),
         new SpanMatcher("From_spring"),
+        new SpanMatcher("To_spring"),
         new SpanMatcher("KafkaListener_spring")));
   }
 
