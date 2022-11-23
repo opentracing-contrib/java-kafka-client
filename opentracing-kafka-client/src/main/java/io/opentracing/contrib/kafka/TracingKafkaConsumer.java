@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -224,7 +225,7 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions,
       final Duration timeout) {
     return consumer.committed(partitions, timeout);
-  }
+ }
 
   @Override
   public Map<MetricName, ? extends Metric> metrics() {
@@ -301,6 +302,11 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public OptionalLong currentLag(final TopicPartition topicPartition) {
+    return consumer.currentLag(topicPartition);
+  }
+
+  @Override
   public ConsumerGroupMetadata groupMetadata() {
     return consumer.groupMetadata();
   }
@@ -311,14 +317,13 @@ public class TracingKafkaConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
-  public void close() {
-    consumer.close();
+  public void enforceRebalance(final String s) {
+    consumer.enforceRebalance(s);
   }
 
   @Override
-  @Deprecated
-  public void close(long l, TimeUnit timeUnit) {
-    consumer.close(l, timeUnit);
+  public void close() {
+    consumer.close();
   }
 
   @Override

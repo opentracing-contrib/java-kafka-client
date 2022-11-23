@@ -62,13 +62,13 @@
   </issueManagement>
 
   <properties>
-    <java.version>1.8</java.version>
+    <java.version>11</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
-    <opentracing.version>0.33.0</opentracing.version>
-    <kafka.version>2.6.0</kafka.version>
-    <spring.kafka.version>2.6.1</spring.kafka.version>
+    <opentracing.version>0.32.0</opentracing.version>
+    <kafka.version>3.2.1</kafka.version>
+    <spring.kafka.version>2.9.0</spring.kafka.version>
     <spring.version>5.2.7.RELEASE</spring.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
@@ -128,7 +128,7 @@
         </exclusion>
         <exclusion>
           <groupId>org.apache.kafka</groupId>
-          <artifactId>kafka_2.11</artifactId>
+          <artifactId>kafka_2.12</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.apache.kafka</groupId>
@@ -268,7 +268,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>3.2.0</version>
+            <version>3.2.1</version>
             <executions>
               <execution>
                 <id>attach-sources</id>
@@ -282,7 +282,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.1.1</version>
+            <version>3.4.1</version>
             <configuration>
               <failOnError>false</failOnError>
             </configuration>
